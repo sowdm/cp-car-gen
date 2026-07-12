@@ -13,8 +13,8 @@ def test_day1_lots_of_cp_experience(day):
     input = pd.Series([EXPERIENCE_CATS[k] for k in [4,4,4,4,3,2,1,0]])
     out = combine_experience_groups(input, day)
 
-    assert (out[input==EXPERIENCE_CATS[4]]==2).all()
-    assert (out[input.isin(EXPERIENCE_CATS[:4])]==1).all()
+    assert (out[input==EXPERIENCE_CATS[4]]==1).all()
+    assert (out[input.isin(EXPERIENCE_CATS[:4])]==0).all()
 
 @pytest.mark.parametrize('day', [1,2])
 def test_day1_less_cp_experience(day):

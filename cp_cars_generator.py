@@ -11,7 +11,8 @@ URL = 'https://docs.google.com/spreadsheets/d/1G_IVcD3l6qV6h6UNixk2zZzwJd_ZpOfU2
 FULL_ROSTER_WORKSHEET = '!Detailed Roster from App'
 ROSTER_WORKSHEET = '!Roster for Car Grouping'
 PAIRINGS_WORKSHEET = '!Required Car Pairings'
-CARGROUP_WORKSHEET = '!Car Group {}'
+CAR_GROUP_WORKSHEET = '!Car Group {}'
+DETAILED_CAR_GROUP_WORKSHEET = '!Detailed Car Group {}'
 FULL_CAR_SIZE = 4
 EMPTY = -1
 
@@ -34,6 +35,20 @@ NAME2_COL = 'Name2'
 pairings_cols = [NAME1_COL, NAME2_COL, PAIR_COL, SEPARATE_COL]
 roster_cols = [RENAME_COLS[x] if x in RENAME_COLS else x for x in ORIG_COLS if x not in DELETE_COLS]
 
+def update_sheet(sht, name, df, worksheet_list):
+    if name in worksheet_list:
+        worksheet = sht.worksheet(name)
+        worksheet.clear()
+    else:
+        worksheet = sht.add_worksheet(name, rows=0, cols=0)
+
+    data = [[int(x) if isinstance(x, np.int64) else x for x in y] for y in df.values.tolist()]
+    worksheet.update([df.columns.values.tolist()] + data)
+
+def get_sheet(sht, name):
+    worksheet = sht.worksheet(name)
+    return pd.DataFrame(worksheet.get_all_records())
+
 def init():
     gc = gspread.service_account(filename=r'streamlit/common-power-6502fad9d9f3.json')
     sht = gc.open_by_url(URL)
@@ -43,9 +58,8 @@ def init():
         raise ValueError(f'{ROSTER_WORKSHEET} or {PAIRINGS_WORKSHEET} found. Spreadsheet may have already been initialized. Delete these sheets to enable initialization.')
 
     assert FULL_ROSTER_WORKSHEET in worksheet_list, f'Worksheet entitled {FULL_ROSTER_WORKSHEET} must exist in spreadsheet and contained roster export from app'
-    full_worksheet = sht.worksheet(FULL_ROSTER_WORKSHEET)
 
-    df_full_roster = pd.DataFrame(full_worksheet.get_all_records())
+    df_full_roster = get_sheet(sht, FULL_ROSTER_WORKSHEET)
     missing_cols = [x for x in ORIG_COLS if x not in df_full_roster]
     assert len(missing_cols)==0, f'Expected columns are missing from {FULL_ROSTER_WORKSHEET}: {missing_cols}'
 
@@ -71,11 +85,8 @@ def init():
     pairings_cols.extend(day_cols)
     df_pairings = pd.DataFrame([], columns=pairings_cols)
 
-    worksheet = sht.add_worksheet(ROSTER_WORKSHEET, rows=0, cols=0)
-    worksheet.update([df_roster.columns.values.tolist()] + df_roster.values.tolist())
-
-    worksheet = sht.add_worksheet(PAIRINGS_WORKSHEET, rows=0, cols=0)
-    worksheet.update([df_pairings.columns.values.tolist()] + df_pairings.values.tolist())
+    update_sheet(sht, ROSTER_WORKSHEET, df_roster, worksheet_list)
+    update_sheet(sht, PAIRINGS_WORKSHEET, df_pairings, worksheet_list)
 
 def main(mode):
     gc = gspread.service_account(filename=r'streamlit/common-power-6502fad9d9f3.json')
@@ -85,10 +96,8 @@ def main(mode):
     assert ROSTER_WORKSHEET in worksheet_list, f'{ROSTER_WORKSHEET} sheet not found. init (-i) must be run'
     assert PAIRINGS_WORKSHEET in worksheet_list, f'{PAIRINGS_WORKSHEET} sheet not found. init (-i) must be run'
 
-    worksheet = sht.worksheet(ROSTER_WORKSHEET)
-    df_roster = pd.DataFrame(worksheet.get_all_records())
-    worksheet = sht.worksheet(PAIRINGS_WORKSHEET)
-    df_pairings = pd.DataFrame(worksheet.get_all_records())
+    df_roster = get_sheet(sht, ROSTER_WORKSHEET)
+    df_pairings = get_sheet(sht, PAIRINGS_WORKSHEET)
 
     day_cols = [x for x in df_roster.columns if re.search(r'^Day\s\d+\s', x)]
 
@@ -100,6 +109,11 @@ def main(mode):
 
     ndays = len(day_cols)
     day = set_day(mode, worksheet_list, ndays)
+
+    day_col = [x for x in df_roster.columns if x.startswith(f'Day {day}')][0]
+    df_roster = df_roster[df_roster[day_col].str.lower()==MARK.lower()].reset_index(drop=True)
+    df_pairings = df_pairings[df_pairings[day_col].str.lower()==MARK.lower()].reset_index(drop=True)
+    df_pairings = df_pairings[df_pairings[NAME1_COL].isin(df_roster['Name']) & df_pairings[NAME2_COL].isin(df_roster['Name'])]
 
     age_cats = df_roster['Generation'].unique()
     gen_start_years = [int(re.search(r'\((\d+)\s\-', x).groups(0)[0]) for x in age_cats]
@@ -113,16 +127,36 @@ def main(mode):
     df_roster['experience'] = combine_experience_groups(df_roster['Canvassing Experience'], day)
     df_roster['driver'] = (df_roster['Driver'].str.lower()=='yes') | df_roster['Driver'].str.contains(str(day)) | (df_roster['Driver']==day)
 
-    car_groups = gen_car_groups(df_roster, df_pairings, day)
+    car_groups = gen_car_groups(df_roster, df_pairings, day, sht)
+
+    # TODO: Resort sheets so that highest priority are on the left???
+    # TODO: Add key sheet that tells what each sheet is including what ! is???
+    # TODO: In app, include ability to modify pairings
 
     nrows = max([len(x) for x in car_groups])
     out = {}
     for k, car in enumerate(car_groups):
-        out[f'Car {k}'] = [car[k] if k<len(car) else "" for k in range(nrows)]
+        out[f'Car {k+1}'] = [df_roster.loc[car[k], 'Name'] if k<len(car) else "" for k in range(nrows)]
+        out[f'Gen {k+1}'] = [df_roster.loc[car[k], 'age'] if k<len(car) else "" for k in range(nrows)]
+        out[f'BIPOC {k+1}'] = [df_roster.loc[car[k], 'bipoc'] if k<len(car) else "" for k in range(nrows)]
+        out[f'Exp {k+1}'] = [df_roster.loc[car[k], 'experience'] if k<len(car) else "" for k in range(nrows)]
+
+    index = ['Driver' if k==0 else k+1 for k in range(nrows)]
+    df_out = pd.DataFrame(out, index=index)
+
+    # sheet = DETAILED_CAR_GROUP_WORKSHEET.format(day)
+    # update_sheet(sht, sheet, df_out.reset_index(), worksheet_list)
+
+    sheet = CAR_GROUP_WORKSHEET.format(day)
+    df_out_min = df_out[[x for x in df_out.columns if x.startswith('Car')]].reset_index()
+    cols = list(df_out_min.columns)
+    cols[0] = ''
+    df_out_min.columns = cols
+    update_sheet(sht, sheet, df_out_min, worksheet_list)
 
 
 def set_day(mode, worksheet_list, ndays):
-    group_created = pd.Series([CARGROUP_WORKSHEET.format(k+1) in worksheet_list for k in range(ndays)])
+    group_created = pd.Series([CAR_GROUP_WORKSHEET.format(k+1) in worksheet_list for k in range(ndays)])
 
     if mode=='next':
         day = group_created[group_created].index[-1]+2 if group_created.any() else 1  # +2 = next day + convert to 1-based
@@ -238,7 +272,7 @@ def get_pairs(df_pairings):
         is_separate = df_pairings.loc[k, SEPARATE_COL].lower()==MARK.lower() if is_pair else False
         added = None
         remove = []
-        for j, g in enumerate(groups):
+        for j, g in enumerate(groups):            
             if df_pairings.loc[k, NAME1_COL] in g or df_pairings.loc[k, NAME2_COL] in g:
                 if added != None:
                     groups[added].update(g)
@@ -269,11 +303,7 @@ def get_pairs(df_pairings):
     return must_pair, separate_car, do_not_pair
 
 
-def gen_car_groups(df_roster, df_pairings, day):
-
-    day_col = [x for x in df_roster.columns if x.startswith(f'Day {day}')][0]
-    df_roster = df_roster[df_roster[day_col].str.lower()==MARK.lower()].reset_index(drop=True)
-    df_pairings = df_pairings[df_pairings[day_col].str.lower()==MARK.lower()].reset_index(drop=True)
+def gen_car_groups(df_roster, df_pairings, day, sht):
 
     assert df_pairings[PAIR_COL].str.lower().isin(['yes','no']).all(), 'All rows in Pair (Yes/No) column of Required Car Pairings sheet must be either Yes or No'
 
@@ -281,10 +311,15 @@ def gen_car_groups(df_roster, df_pairings, day):
 
     prev_pair = np.zeros((num_vols,num_vols))
     for d in range(day-1):
+        df_past = get_sheet(sht, CAR_GROUP_WORKSHEET.format(d+1))
+        car_cols = [x for x in df_past.columns if x.startswith('Car')]
         # Populate prev_pair
-        for i in df_roster.index:
-            carnum = df_roster.loc[i, groupname[d]]
-            idx = df_roster[groupname[d]] == carnum
+        for c in car_cols:
+            matches = df_roster['Name'].isin(df_past[c])
+            for i in matches[matches].index:
+                for j in matches[matches].index:
+                    if i!=j:
+                        prev_pair[i,j]+=1
 
     must_be_in_same_car, separate_car, do_not_pair = get_pairs(df_pairings)
 
@@ -296,7 +331,7 @@ def gen_car_groups(df_roster, df_pairings, day):
     do_not_pair = [[df_roster['Name'][df_roster['Name'] == y].index[0] for y in x] for x in do_not_pair]
 
     carsizes = get_car_sizes(num_vols, must_be_in_same_car, separate_car)
-    num_cars = len(carsizes)
+    carsizes.sort(reverse=True)
 
     # Create base car groups
     car_groups0 = [np.ones(x, dtype=int)*EMPTY for x in carsizes]
@@ -374,8 +409,8 @@ def gen_car_groups(df_roster, df_pairings, day):
             age_score = df_roster.loc[car,'age'].duplicated().sum()
             exp_score = df_roster.loc[car,'experience'].duplicated().sum()
 
-            idx = car[None]*prev_pair.shape[1] + car[:,None]  # Get 1-D indices for all pairs
-            prev_score = prev_pair.flatten()[idx].sum() / 2
+            idx = car[None]*prev_pair.shape[0] + car[:,None]  # Get 1-D indices for all pairs
+            prev_score = prev_pair.flatten()[idx].sum() / 2  # prev_pair is symmetric. Divide by 2 to only sum 1 side
 
             score+=BIPOC_WEIGHT * bipoc_score + AGE_WEIGHT * age_score + EXP_WEIGHT * exp_score + PREV_WEIGHT * prev_score
 
