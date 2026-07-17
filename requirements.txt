@@ -1,3 +1,5 @@
 numpy
 pandas
 gspread
+streamlit
+st-gsheets-connection 

@@ -6,13 +6,17 @@ import random
 import numpy as np
 import pandas as pd
 import re
+import tomllib
 
-URL = 'https://docs.google.com/spreadsheets/d/1G_IVcD3l6qV6h6UNixk2zZzwJd_ZpOfU27cRe_lFaMQ/'
-FULL_ROSTER_WORKSHEET = '!Detailed Roster from App'
-ROSTER_WORKSHEET = '!Roster for Car Grouping'
-PAIRINGS_WORKSHEET = '!Required Car Pairings'
-CAR_GROUP_WORKSHEET = '!Car Group {}'
-DETAILED_CAR_GROUP_WORKSHEET = '!Detailed Car Group {}'
+from worksheets import FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, PAIRINGS_WORKSHEET, CAR_GROUP_WORKSHEET
+import helper
+
+# TODO: Test that optimization has predicted results for simple weights
+
+with open('.streamlit/secrets.toml', 'rb') as f:
+    secrets = tomllib.load(f)
+URL = secrets['SAMPLE_URL']
+
 FULL_CAR_SIZE = 4
 EMPTY = -1
 
@@ -45,21 +49,19 @@ def update_sheet(sht, name, df, worksheet_list):
     data = [[int(x) if isinstance(x, np.int64) else x for x in y] for y in df.values.tolist()]
     worksheet.update([df.columns.values.tolist()] + data)
 
-def get_sheet(sht, name):
-    worksheet = sht.worksheet(name)
-    return pd.DataFrame(worksheet.get_all_records())
 
 def init():
     gc = gspread.service_account(filename=r'streamlit/common-power-6502fad9d9f3.json')
-    sht = gc.open_by_url(URL)
 
-    worksheet_list = [x.title for x in sht.worksheets()]
-    if ROSTER_WORKSHEET in worksheet_list or PAIRINGS_WORKSHEET in worksheet_list:
+    data = helper.get_spreadsheet(gc, URL)
+    sht = data['spreadsheet']
+    worksheet_list = data['worksheets']
+    if data['is_init']:
         raise ValueError(f'{ROSTER_WORKSHEET} or {PAIRINGS_WORKSHEET} found. Spreadsheet may have already been initialized. Delete these sheets to enable initialization.')
 
     assert FULL_ROSTER_WORKSHEET in worksheet_list, f'Worksheet entitled {FULL_ROSTER_WORKSHEET} must exist in spreadsheet and contained roster export from app'
 
-    df_full_roster = get_sheet(sht, FULL_ROSTER_WORKSHEET)
+    df_full_roster = helper.get_sheet(sht, FULL_ROSTER_WORKSHEET)
     missing_cols = [x for x in ORIG_COLS if x not in df_full_roster]
     assert len(missing_cols)==0, f'Expected columns are missing from {FULL_ROSTER_WORKSHEET}: {missing_cols}'
 
@@ -90,14 +92,13 @@ def init():
 
 def main(mode):
     gc = gspread.service_account(filename=r'streamlit/common-power-6502fad9d9f3.json')
-    sht = gc.open_by_url(URL)
+    data = helper.get_spreadsheet(gc, URL)
+    sht = data['file']
+    worksheet_list = data['worksheets']
+    assert data['is_init'], f'Spreadsheet must be initialized. init (-i) must be run'
 
-    worksheet_list = [x.title for x in sht.worksheets()]
-    assert ROSTER_WORKSHEET in worksheet_list, f'{ROSTER_WORKSHEET} sheet not found. init (-i) must be run'
-    assert PAIRINGS_WORKSHEET in worksheet_list, f'{PAIRINGS_WORKSHEET} sheet not found. init (-i) must be run'
-
-    df_roster = get_sheet(sht, ROSTER_WORKSHEET)
-    df_pairings = get_sheet(sht, PAIRINGS_WORKSHEET)
+    df_roster = helper.get_sheet(sht, ROSTER_WORKSHEET)
+    df_pairings = helper.get_sheet(sht, PAIRINGS_WORKSHEET)
 
     day_cols = [x for x in df_roster.columns if re.search(r'^Day\s\d+\s', x)]
 
@@ -311,7 +312,7 @@ def gen_car_groups(df_roster, df_pairings, day, sht):
 
     prev_pair = np.zeros((num_vols,num_vols))
     for d in range(day-1):
-        df_past = get_sheet(sht, CAR_GROUP_WORKSHEET.format(d+1))
+        df_past = helper.get_sheet(sht, CAR_GROUP_WORKSHEET.format(d+1))
         car_cols = [x for x in df_past.columns if x.startswith('Car')]
         # Populate prev_pair
         for c in car_cols:

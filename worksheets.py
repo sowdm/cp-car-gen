@@ -1,0 +1,5 @@
+FULL_ROSTER_WORKSHEET = '!Detailed Roster from App'
+ROSTER_WORKSHEET = '!Roster for Car Grouping'
+PAIRINGS_WORKSHEET = '!Required Car Pairings'
+CAR_GROUP_WORKSHEET = '!Car Group {}'
+DETAILED_CAR_GROUP_WORKSHEET = '!Detailed Car Group {}'
