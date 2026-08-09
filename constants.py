@@ -1,0 +1,2 @@
+EMPTY = -1
+MARK = 'X'

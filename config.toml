@@ -1,0 +1,14 @@
+# Number of people in a full car
+FULL_CAR_SIZE = 4
+
+# The number of age groups will be consolidated into at most this many groups
+NUM_AGE_GROUPS = 3
+
+# How much to weight BIPOC diversity
+BIPOC_WEIGHT = 1
+# How much to weight age diversity
+AGE_WEIGHT = 1
+# How much to weight experience diversity
+EXP_WEIGHT = 1
+# How much to weight not having previously been in same car
+PREV_WEIGHT = 3
