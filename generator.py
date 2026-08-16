@@ -32,11 +32,11 @@ def gen_car_groups(df_roster, df_pairings, day, sht, config):
     # Create a mapping of volunteers who have previously been paired
     prev_pair = np.zeros((num_vols,num_vols))
     for d in range(day-1):
-        df_past = get_sheet(sht, CAR_GROUP_WORKSHEET.format(d+1))
-        car_cols = [x for x in df_past.columns if x.startswith('Car')]
+        df_past = get_sheet(sht['file'], CAR_GROUP_WORKSHEET.format(d+1))
+
         # Populate prev_pair
-        for c in car_cols:
-            matches = df_roster['Name'].isin(df_past[c])
+        for c in df_past['Car'].unique():
+            matches = df_roster['Name'].isin(df_past['Name'][df_past['Car']==c])
             for i in matches[matches].index:
                 for j in matches[matches].index:
                     if i!=j:
@@ -44,6 +44,17 @@ def gen_car_groups(df_roster, df_pairings, day, sht, config):
 
     must_be_in_same_car, separate_car, do_not_pair = get_pairs(df_pairings)
 
+    # Remove people not canvassing this day
+    must_be_in_same_car = [[y for y in x if (df_roster['Name']==y).any()] for x in must_be_in_same_car]
+    do_not_pair = [[y for y in x if (df_roster['Name']==y).any()] for x in do_not_pair]
+
+    # Get rid of groups that no longer have more than 1 person
+    lens = [len(x) for x in must_be_in_same_car]
+    must_be_in_same_car = [x for x,y in zip(must_be_in_same_car, lens) if y>1]
+    separate_car = [x for x,y in zip(separate_car, lens) if y>1]
+    do_not_pair = [x for x in do_not_pair if len(x)>1]
+
+    # Sort in descending order of group size
     must_be_in_same_car =  [x for _, x in sorted(zip([len(y) for y in must_be_in_same_car], must_be_in_same_car), reverse=True)]
     do_not_pair =  [x for _, x in sorted(zip([len(y) for y in do_not_pair], do_not_pair), reverse=True)]
 
@@ -62,7 +73,7 @@ def gen_car_groups(df_roster, df_pairings, day, sht, config):
     num_cars_avail = len(car_groups0)
     drop = []
     for j, (m,s) in enumerate(zip(must_be_in_same_car, separate_car)):
-        if s or len(m)>=FULL_CAR_SIZE:
+        if s or len(m)>=FULL_CAR_SIZE:  # Must be in separate car due to request or size of group
             # Find car of this size that is empty
             drop.append(j)
             car = [x for x in car_groups0 if len(x)==len(m) and x[0]==EMPTY][0]
@@ -73,7 +84,7 @@ def gen_car_groups(df_roster, df_pairings, day, sht, config):
             if not drivers.any():
                 drivers = df_roster.loc[m, 'Backup Driver'].str.lower()=='yes'
                 if not drivers.any():
-                    raise ValueError('No one in car is a driver!')
+                    raise ValueError(f'No one in group is a driver: {m}')
             drivers = drivers[drivers].index
             car[0] = drivers[0]
             available0.remove(drivers[0])
@@ -139,17 +150,18 @@ def gen_car_groups(df_roster, df_pairings, day, sht, config):
             best_group = car_groups
             min_score = score
 
+    out = {'Role':[], 'Car':[], 'Name':[], 'Gen':[], 'BIPOC':[], 'Exp':[]}
+    for car, team in enumerate(best_group):
+        for k,v in enumerate(team):
+            role = 'Driver' if k==0 else ''
+            out['Role'].append(role)
+            out['Car'].append(car+1)
+            out['Name'].append(df_roster.loc[v, 'Name'])
+            out['Gen'].append(df_roster.loc[v, 'age'])
+            out['BIPOC'].append(df_roster.loc[v, 'bipoc'])
+            out['Exp'].append(df_roster.loc[v, 'experience'])
 
-    nrows = max([len(x) for x in best_group])
-    out = {}
-    for k, car in enumerate(best_group):
-        out[f'Car {k+1}'] = [df_roster.loc[car[k], 'Name'] if k<len(car) else "" for k in range(nrows)]
-        out[f'Gen {k+1}'] = [df_roster.loc[car[k], 'age'] if k<len(car) else "" for k in range(nrows)]
-        out[f'BIPOC {k+1}'] = [df_roster.loc[car[k], 'bipoc'] if k<len(car) else "" for k in range(nrows)]
-        out[f'Exp {k+1}'] = [df_roster.loc[car[k], 'experience'] if k<len(car) else "" for k in range(nrows)]
-
-    index = ['Driver' if k==0 else k+1 for k in range(nrows)]
-    df_out = pd.DataFrame(out, index=index)
+    df_out = pd.DataFrame(out)
 
     return df_out
 
@@ -207,9 +219,9 @@ def get_pairs(df_pairings):
     separate_car = []
     do_not_pair = []
     for k in df_pairings.index:
-        is_pair = df_pairings.loc[k, PAIR_COL].lower()=='yes'
+        is_pair = df_pairings.loc[k, PAIR_COL]
         groups = must_pair if is_pair else do_not_pair
-        is_separate = df_pairings.loc[k, SEPARATE_COL].lower()==MARK.lower() if is_pair else False
+        is_separate = df_pairings.loc[k, SEPARATE_COL] if is_pair else False
         added = None
         remove = []
         for j, g in enumerate(groups):            
@@ -332,7 +344,7 @@ def rand_car_groups(car_groups0, vols, potential_drivers, must_be_in_same_car, d
                 # Ensure that there is someone with max experience in group
                 has_experience = experience.loc[car[0]]==max_experience or (experience.loc[g]==max_experience).any()
                 if can_pair and has_experience:
-                    car[np.where(car==EMPTY)[:len(g)]] = g
+                    car[np.where(car==EMPTY)[0][:len(g)]] = g
                     break
             else:
                 fail = True

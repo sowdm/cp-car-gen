@@ -6,7 +6,7 @@ import pandas as pd
 
 from columns import DATES_COL, DELETE_COLS, INIT_PAIRINGS_COLS, ORIG_COLS, RENAME_COLS
 from constants import MARK
-from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, PAIRINGS_WORKSHEET, ROSTER_WORKSHEET
+from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, PAIRINGS_WORKSHEET, ROSTER_WORKSHEET, SHEET_INDICATOR
 
 
 def get_sheet(sht, name):
@@ -16,7 +16,7 @@ def get_sheet(sht, name):
 
 def get_spreadsheet(client: gspread.client.Client, url: str):
     sht = client.open_by_url(url)
-    worksheet_list = [x.title for x in sht.worksheets()]
+    worksheet_list = [x.title for x in sht.worksheets() if x.title.startswith(SHEET_INDICATOR)]
     has_cp_export = FULL_ROSTER_WORKSHEET in worksheet_list
     is_init = ROSTER_WORKSHEET in worksheet_list and PAIRINGS_WORKSHEET in worksheet_list
 
@@ -64,7 +64,6 @@ def init(gsheet):
     assert FULL_ROSTER_WORKSHEET in worksheet_list, f'Worksheet entitled {FULL_ROSTER_WORKSHEET} must exist in spreadsheet and contained roster export from app'
 
     df_full_roster = get_sheet(sht, FULL_ROSTER_WORKSHEET)
-    print(ORIG_COLS)
     missing_cols = [x for x in ORIG_COLS if x not in df_full_roster]
     assert len(missing_cols)==0, f'Expected columns are missing from {FULL_ROSTER_WORKSHEET}: {missing_cols}'
 
@@ -98,6 +97,7 @@ def init(gsheet):
 def set_day(mode, worksheet_list, ndays):
     group_created = pd.Series([CAR_GROUP_WORKSHEET.format(k+1) in worksheet_list for k in range(ndays)])
 
+    mode = mode.lower()
     if mode=='next':
         day = group_created[group_created].index[-1]+2 if group_created.any() else 1  # +2 = next day + convert to 1-based
     elif mode=='overwrite':
