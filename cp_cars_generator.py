@@ -17,7 +17,7 @@ with open('.streamlit/secrets.toml', 'rb') as f:
     secrets = tomllib.load(f)
 URL = secrets['SAMPLE_URL']
 
-with open('config.toml') as f:
+with open('config.toml', 'rb') as f:
     config = tomllib.load(f)
 
 pairings_cols = INIT_PAIRINGS_COLS.copy()

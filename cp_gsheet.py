@@ -11,7 +11,14 @@ from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, PAIRINGS_WORK
 
 def get_sheet(sht, name):
     worksheet = sht.worksheet(name)
-    return pd.DataFrame(worksheet.get_all_records())
+    records = worksheet.get_all_records()
+    if len(records)>0:
+        df = pd.DataFrame(records)
+    else:
+        cols = worksheet.row_values(1)
+        df = pd.DataFrame(columns=cols)
+        
+    return df
 
 
 def get_spreadsheet(client: gspread.client.Client, url: str):

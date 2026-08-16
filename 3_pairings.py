@@ -14,9 +14,9 @@ st.info('Input people who must OR must NOT be paired in the same car. This can a
 
 df_roster = cp_gsheet.get_sheet(gsheet['file'], ROSTER_WORKSHEET)
 df_roster = df_roster.replace(MARK, True).replace("", False)
+day_cols = [x for x in df_roster.columns if re.search(r'^Day\s\d+\s', x)]
 
 df_pairings_full = cp_gsheet.get_sheet(gsheet['file'], PAIRINGS_WORKSHEET)
-day_cols = [x for x in df_pairings_full.columns if re.search(r'^Day\s\d+\s', x)]
 df_pairings_full = df_pairings_full.replace(MARK, True).replace("", False).replace('Yes', True).replace('yes', True).replace('No', False).replace('no', False)
 
 ndays = len(day_cols)
@@ -29,7 +29,7 @@ for c in [day_col, PAIR_COL, SEPARATE_COL]:
     if len(bad_vals):
         st.error(f'ERROR: Bad values found in column {c}: {bad_vals}')
 
-df_pairings = df_pairings_full[df_pairings_full[day_col]].reset_index(drop=True)
+df_pairings = df_pairings_full[df_pairings_full[day_col]].reset_index(drop=True) if len(df_pairings_full)>0 else df_pairings_full
 
 for c in [NAME1_COL, NAME2_COL]:
     bad_vals = set(df_pairings_full[c].tolist()) - set(df_roster['Name'].tolist())
@@ -37,9 +37,6 @@ for c in [NAME1_COL, NAME2_COL]:
         st.error(f'ERROR: Bad values found in column {c}: {bad_vals}')
 
 df_roster = df_roster[df_roster[day_col]].reset_index(drop=True)
-
-# TODO: Only keep people in roster? Is it better to show with some sort of error???
-# df_pairings = df_pairings[df_pairings[NAME1_COL].isin(df_roster['Name']) & df_pairings[NAME2_COL].isin(df_roster['Name'])]
 
 df_pairings = df_pairings[[NAME1_COL, NAME2_COL, PAIR_COL, SEPARATE_COL]]
 
@@ -57,6 +54,9 @@ if col0.button('Previous'):
 
 if col1.button('Accept Pairings'):
     st.session_state['df_roster'] = df_roster
+    # If new rows are added, they may contain a list of a string rather than just a string
+    df[NAME1_COL] = df[NAME1_COL].apply(lambda x: x[0] if isinstance(x,list) and len(x)==1 else x)
+    df[NAME2_COL] = df[NAME2_COL].apply(lambda x: x[0] if isinstance(x,list) and len(x)==1 else x)
     st.session_state['df_pairings'] = df
     st.session_state['df_car_groups'] = None
     st.switch_page('4_cargen.py')

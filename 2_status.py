@@ -29,9 +29,11 @@ elif not gsheet['is_init']:
                 '1. Simplified roster sheet: Add any additional people and change which days people are canvassing here\n\n'+
                 '2. Pairings sheet: Mark people who must or must NOT be paired together for specific days here\n\n'
                 'Click button below to initialize')
-    if st.button('Initialize'):
+    def init():
         cp_gsheet.init(gsheet)
         st.session_state['gsheet'] = cp_gsheet.get_spreadsheet(st.session_state['client'], st.session_state['url'])
+
+    st.button('Initialize', on_click=init)
 else:
     avail_days = [k+1 for k,x in enumerate(gsheet['date_has_car_group']) if not x]
     nextday = [avail_days[0] if len(avail_days) else len(gsheet['date_has_car_group'])+1][0]
