@@ -1,11 +1,25 @@
+import gspread
 import pandas as pd
 import streamlit as st
 
 import base_page
+import constants
 import cp_gsheet
+import utils
 from worksheets import FULL_ROSTER_WORKSHEET, CAR_GROUP_WORKSHEET
 
 gsheet = base_page.setup(__file__)
+
+if st.session_state['display_error']:
+    if st.session_state['display_error']['error_type'] == 'APIError':
+        st.error('ERROR: The enterred URL is not shared with Editor access. '+
+                                'Please reload this page and follow the instructions for sharing the Google sheet.')
+    else:
+        st.error(st.session_state['display_error']['display_msg'])
+        st.download_button('Download Error Message', st.session_state['display_error']['traceback_msg'])
+        st.session_state['display_error'] = {}
+
+    exit()
 
 types = [f'Has "{FULL_ROSTER_WORKSHEET}" sheet containing spreadsheet export from app', 'Initialization']
 states = [gsheet['has_cp_export'], gsheet['is_init']]
@@ -23,15 +37,24 @@ st.dataframe(df)
 
 if not gsheet['has_cp_export']:
     st.error(f'The spreadsheet at the requested URL must have the export of the roster from the CP app in a sheet called "{FULL_ROSTER_WORKSHEET}". '+
-                    'Contact the administrator at the email below if you are not sure what this is.')
+                    f'Please email the [admin]({constants.EMAIL}) if you are not sure what this is. Please include your Slack username in the email')
 elif not gsheet['is_init']:
     st.info('The Google Sheet has not been *initialized*. Initialization will add sheets to the Google Sheet that will add 2 sheets:\n\n'+
                 '1. Simplified roster sheet: Add any additional people and change which days people are canvassing here\n\n'+
                 '2. Pairings sheet: Mark people who must or must NOT be paired together for specific days here\n\n'
                 'Click button below to initialize')
     def init():
-        cp_gsheet.init(gsheet)
-        st.session_state['gsheet'] = cp_gsheet.get_spreadsheet(st.session_state['client'], st.session_state['url'])
+        try:
+            cp_gsheet.init(gsheet)
+            st.session_state['gsheet'] = cp_gsheet.get_spreadsheet(st.session_state['client'], st.session_state['url'])
+        except gspread.exceptions.APIError:
+            st.session_state['display_error']['error_type'] = 'APIError'
+        except:
+            display_msg, traceback_msg = utils.get_error_msgs(st.session_state)
+            st.session_state['display_error']['error_type'] = None
+            st.session_state['display_error']['display_msg'] = display_msg
+            st.session_state['display_error']['traceback_msg'] = traceback_msg
+            
 
     st.button('Initialize', on_click=init)
 else:

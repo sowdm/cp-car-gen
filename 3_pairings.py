@@ -9,8 +9,9 @@ from constants import MARK
 
 gsheet = base_page.setup(__file__)
 
-st.info('Input people who must OR must NOT be paired in the same car. This can also be done directly in the spreadsheet including for multiple days. ' \
-        'although it requires restarting this process. Click Next to generate car groups.')
+st.info('1. Input people who must OR must NOT be paired in the same car. See key below the table for details.\n2. Click Next to generate car groups.\n\n' \
+        'Table can also be setup in the spreadsheet, which also allow pairing people for multiple days. ' \
+        'It does require restarting this process. ')
 
 df_roster = cp_gsheet.get_sheet(gsheet['file'], ROSTER_WORKSHEET)
 df_roster = df_roster.replace(MARK, True).replace("", False)

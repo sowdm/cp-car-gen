@@ -79,7 +79,7 @@ def init(gsheet):
     df_roster['Name'] = df_roster.apply(lambda x: f"{x['Name']} {x['Last Name']}", axis=1)
 
     dates = df_roster[DATES_COL].tolist()
-    dates = [x.strip().split(' ') for x in dates]
+    dates = [x.strip().split() for x in dates]
     date_set = set()
     for d in dates:
         date_set.update(d)
@@ -89,7 +89,7 @@ def init(gsheet):
     day_cols = []
     for k,d in enumerate(all_dates):
         day_cols.append(f'Day {k+1} ({d.strftime('%a')})')
-        df_roster[day_cols[-1]] = df_roster[DATES_COL].apply(lambda x: MARK if d in [pd.to_datetime(x) for x in x.strip().split(' ')] else '')
+        df_roster[day_cols[-1]] = df_roster[DATES_COL].apply(lambda x: MARK if d in [pd.to_datetime(x) for x in x.strip().split()] else '')
 
     df_roster = df_roster.drop(columns=DELETE_COLS)
 
