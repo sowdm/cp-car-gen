@@ -4,12 +4,13 @@ import re
 import numpy as np
 import pandas as pd
 
-from columns import DATES_COL, DELETE_COLS, INIT_PAIRINGS_COLS, ORIG_COLS, RENAME_COLS
-from constants import MARK
-from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, PAIRINGS_WORKSHEET, ROSTER_WORKSHEET, SHEET_INDICATOR
+from columns import DATES_COL, DELETE_COLS, INIT_PAIRINGS_COLS, ORIG_COLS, RENAME_COLS, NAME_COL, DRIVER_TYPE_COL
+import constants
+import utils
+from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, PAIRINGS_WORKSHEET, ROSTER_WORKSHEET, SHEET_INDICATOR, DRIVER_WORKSHEET
 
 
-def get_sheet(sht, name):
+def get_sheet(sht, name, clean=False, str_cols=[]):
     worksheet = sht.worksheet(name)
     records = worksheet.get_all_records()
     if len(records)>0:
@@ -17,7 +18,10 @@ def get_sheet(sht, name):
     else:
         cols = worksheet.row_values(1)
         df = pd.DataFrame(columns=cols)
-        
+
+    if clean:
+        df = utils.clean_df(df, str_cols=str_cols)
+
     return df
 
 
@@ -25,7 +29,7 @@ def get_spreadsheet(client: gspread.client.Client, url: str):
     sht = client.open_by_url(url)
     worksheet_list = [x.title for x in sht.worksheets() if x.title.startswith(SHEET_INDICATOR)]
     has_cp_export = FULL_ROSTER_WORKSHEET in worksheet_list
-    is_init = ROSTER_WORKSHEET in worksheet_list and PAIRINGS_WORKSHEET in worksheet_list
+    is_init = ROSTER_WORKSHEET in worksheet_list and PAIRINGS_WORKSHEET in worksheet_list and DRIVER_WORKSHEET in worksheet_list
 
     dts = None
     date_has_car_group = None
@@ -66,7 +70,7 @@ def init(gsheet):
     sht = gsheet['file']
     worksheet_list = gsheet['worksheets']
     if gsheet['is_init']:
-        raise ValueError(f'{ROSTER_WORKSHEET} or {PAIRINGS_WORKSHEET} found. Spreadsheet may have already been initialized. Delete these sheets to enable initialization.')
+        raise ValueError('Cannot initialize. This spreadsheet has already been initialized')
 
     assert FULL_ROSTER_WORKSHEET in worksheet_list, f'Worksheet entitled {FULL_ROSTER_WORKSHEET} must exist in spreadsheet and contained roster export from app'
 
@@ -76,7 +80,7 @@ def init(gsheet):
 
     df_roster = df_full_roster[ORIG_COLS]
     df_roster = df_roster.rename(columns=RENAME_COLS)
-    df_roster['Name'] = df_roster.apply(lambda x: f"{x['Name']} {x['Last Name']}", axis=1)
+    df_roster[NAME_COL] = df_roster.apply(lambda x: f"{x[NAME_COL]} {x['Last Name']}", axis=1)
 
     dates = df_roster[DATES_COL].tolist()
     dates = [x.strip().split() for x in dates]
@@ -89,9 +93,21 @@ def init(gsheet):
     day_cols = []
     for k,d in enumerate(all_dates):
         day_cols.append(f'Day {k+1} ({d.strftime('%a')})')
-        df_roster[day_cols[-1]] = df_roster[DATES_COL].apply(lambda x: MARK if d in [pd.to_datetime(x) for x in x.strip().split()] else '')
+        df_roster[day_cols[-1]] = df_roster[DATES_COL].apply(lambda x: constants.MARK if d in [pd.to_datetime(x) for x in x.strip().split()] else '')
 
     df_roster = df_roster.drop(columns=DELETE_COLS)
+
+    drivers = {NAME_COL:[], DRIVER_TYPE_COL:[]}
+    for k in df_roster.index:
+        if df_roster.loc[k, 'Driver'].lower()=='yes':
+            drivers[NAME_COL].append(df_roster.loc[k, NAME_COL])
+            drivers[DRIVER_TYPE_COL].append(constants.PREFERRED_DRIVER)
+        elif df_roster.loc[k, 'Backup Driver'].lower()=='yes':
+            drivers[NAME_COL].append(df_roster.loc[k, NAME_COL])
+            drivers[DRIVER_TYPE_COL].append(constants.BACKUP_DRIVER)
+    df_drivers = pd.DataFrame(drivers)
+    for c in day_cols:
+        df_drivers[c] = ''
 
     pairings_cols = INIT_PAIRINGS_COLS.copy()
     pairings_cols.extend(day_cols)
@@ -99,6 +115,7 @@ def init(gsheet):
 
     update_sheet(sht, ROSTER_WORKSHEET, df_roster, worksheet_list)
     update_sheet(sht, PAIRINGS_WORKSHEET, df_pairings, worksheet_list)
+    update_sheet(sht, DRIVER_WORKSHEET, df_drivers, worksheet_list)
 
 
 def set_day(mode, worksheet_list, ndays):

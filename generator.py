@@ -5,31 +5,77 @@ import pandas as pd
 import random
 import re
 
+import constants
 from cp_gsheet import get_sheet
-from worksheets import CAR_GROUP_WORKSHEET
-from columns import PAIR_COL, \
-    NAME1_COL, NAME2_COL, SEPARATE_COL
-from constants import EMPTY, MARK
+from worksheets import CAR_GROUP_WORKSHEET, DRIVER_WORKSHEET
+from columns import PAIR_COL, NAME1_COL, NAME2_COL, SEPARATE_COL, GENERATION_COL, EXPERIENCE_COL
+from constants import EMPTY
 
-def gen_car_groups(df_roster, df_pairings, day, sht, config):
-    FULL_CAR_SIZE = config['FULL_CAR_SIZE']
+class CarGenerator:
+    def __init__(self, df_roster, df_pairings, day, sht, config):
+        self.FULL_CAR_SIZE = config['FULL_CAR_SIZE']
+        self.df_roster = df_roster
+        self.df_pairings = df_pairings
+        self.day = day
+        self.sht = sht
+        self.config = config
+        self.drivers = None
 
-    age_cats = df_roster['Generation'].unique()
-    gen_start_years = [int(re.search(r'\((\d+)\s\-', x).groups(0)[0]) for x in age_cats]
-    age_cats = [x for _, x in sorted(zip(gen_start_years, age_cats))]  # Sort by year
+        age_cats = self.df_roster[GENERATION_COL].unique()
+        gen_start_years = [int(re.search(r'\((\d+)\s\-', x).groups(0)[0]) for x in age_cats]
+        age_cats = [x for _, x in sorted(zip(gen_start_years, age_cats))]  # Sort by year
 
-    # Reduce number of age categories
-    gen_labels, new_age_cats = combine_age_groups(df_roster['Generation'], age_cats, config)
+        # Reduce number of age categories
+        gen_labels, new_age_cats = combine_age_groups(self.df_roster[GENERATION_COL], age_cats, self.config)
+    
+        # Convert to index values
+        self.df_roster['age'] = gen_labels.apply(lambda x: new_age_cats.index(x))
+        self.df_roster['bipoc'] = self.df_roster['BIPOC Status'].apply(lambda x: list(self.df_roster['BIPOC Status'].unique()).index(x))
+        self.df_roster['experience'] = combine_experience_groups(self.df_roster[EXPERIENCE_COL], self.day)
+    
+        self.must_be_in_same_car, self.separate_car, self.do_not_pair = get_pairs(self.df_pairings)
+    
+        # Remove people not canvassing this day
+        self.must_be_in_same_car = [[y for y in x if (self.df_roster['Name']==y).any()] for x in self.must_be_in_same_car]
+        self.do_not_pair = [[y for y in x if (self.df_roster['Name']==y).any()] for x in self.do_not_pair]
+    
+        # Get rid of groups that no longer have more than 1 person
+        lens = [len(x) for x in self.must_be_in_same_car]
+        self.must_be_in_same_car = [x for x,y in zip(self.must_be_in_same_car, lens) if y>1]
+        self.separate_car = [x for x,y in zip(self.separate_car, lens) if y>1]
+        self.do_not_pair = [x for x in self.do_not_pair if len(x)>1]
+    
+        # Sort in descending order of group size
+        self.must_be_in_same_car =  [x for _, x in sorted(zip([len(y) for y in self.must_be_in_same_car], self.must_be_in_same_car), reverse=True)]
+        self.do_not_pair =  [x for _, x in sorted(zip([len(y) for y in self.do_not_pair], self.do_not_pair), reverse=True)]
 
-    # Convert to index values
-    df_roster['age'] = gen_labels.apply(lambda x: new_age_cats.index(x))
-    df_roster['bipoc'] = df_roster['BIPOC Status'].apply(lambda x: list(df_roster['BIPOC Status'].unique()).index(x))
-    df_roster['experience'] = combine_experience_groups(df_roster['Canvassing Experience'], day)
-    df_roster['driver'] = (df_roster['Driver'].str.lower()=='yes') | df_roster['Driver'].str.contains(str(day)) | (df_roster['Driver']==day)
+        num_vols = len(self.df_roster)
+        self.carsizes = get_car_sizes(num_vols, self.must_be_in_same_car, self.separate_car, self.FULL_CAR_SIZE)
+        self.carsizes.sort(reverse=True)
+        self.ncars = len(self.carsizes)
 
-    num_vols = len(df_roster)
+    def set_drivers(self, drivers):
+        self.drivers = drivers
+
+    def gen_car_groups(self):
+        return  gen_car_groups(self.df_roster, self.drivers, self.config, self.carsizes, 
+                               self.must_be_in_same_car, self.separate_car, self.FULL_CAR_SIZE,
+                               self.do_not_pair, self.sht, self.day)
+
+
+def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, separate_car, FULL_CAR_SIZE, do_not_pair, sht, day):
+    df_roster = df_roster.copy()
+
+    # Convert names to indices
+    must_be_in_same_car = [[df_roster['Name'][df_roster['Name'] == y].index[0] for y in x] for x in must_be_in_same_car]
+    do_not_pair = [[df_roster['Name'][df_roster['Name'] == y].index[0] for y in x] for x in do_not_pair]
+    potential_drivers = [df_roster['Name'][df_roster['Name'] == y].index[0] for y in drivers]
+
+    # Create base car groups
+    car_groups0 = [np.ones(x, dtype=int)*EMPTY for x in carsizes]
 
     # Create a mapping of volunteers who have previously been paired
+    num_vols = len(df_roster)
     prev_pair = np.zeros((num_vols,num_vols))
     for d in range(day-1):
         df_past = get_sheet(sht['file'], CAR_GROUP_WORKSHEET.format(d+1))
@@ -42,53 +88,31 @@ def gen_car_groups(df_roster, df_pairings, day, sht, config):
                     if i!=j:
                         prev_pair[i,j]+=1
 
-    must_be_in_same_car, separate_car, do_not_pair = get_pairs(df_pairings)
-
-    # Remove people not canvassing this day
-    must_be_in_same_car = [[y for y in x if (df_roster['Name']==y).any()] for x in must_be_in_same_car]
-    do_not_pair = [[y for y in x if (df_roster['Name']==y).any()] for x in do_not_pair]
-
-    # Get rid of groups that no longer have more than 1 person
-    lens = [len(x) for x in must_be_in_same_car]
-    must_be_in_same_car = [x for x,y in zip(must_be_in_same_car, lens) if y>1]
-    separate_car = [x for x,y in zip(separate_car, lens) if y>1]
-    do_not_pair = [x for x in do_not_pair if len(x)>1]
-
-    # Sort in descending order of group size
-    must_be_in_same_car =  [x for _, x in sorted(zip([len(y) for y in must_be_in_same_car], must_be_in_same_car), reverse=True)]
-    do_not_pair =  [x for _, x in sorted(zip([len(y) for y in do_not_pair], do_not_pair), reverse=True)]
-
-    # Convert names to indices in must_be_in_same_car
-    must_be_in_same_car = [[df_roster['Name'][df_roster['Name'] == y].index[0] for y in x] for x in must_be_in_same_car]
-    do_not_pair = [[df_roster['Name'][df_roster['Name'] == y].index[0] for y in x] for x in do_not_pair]
-
-    carsizes = get_car_sizes(num_vols, must_be_in_same_car, separate_car, FULL_CAR_SIZE)
-    carsizes.sort(reverse=True)
-
-    # Create base car groups
-    car_groups0 = [np.ones(x, dtype=int)*EMPTY for x in carsizes]
-
-    # Add groups consisting of people who must be in the same car AND must be in their own separate car
+    # Add groups consisting of people who must be in the same car AND either:
+    # 1. must be in their own separate car OR
+    # 2. have a driver in their car
     available0 = list(df_roster.index)
     num_cars_avail = len(car_groups0)
     drop = []
     for j, (m,s) in enumerate(zip(must_be_in_same_car, separate_car)):
-        if s or len(m)>=FULL_CAR_SIZE:  # Must be in separate car due to request or size of group
+        avail_drivers = [x for x in potential_drivers if x in m]
+        if s or len(m)>=FULL_CAR_SIZE or len(avail_drivers)>0:
             # Find car of this size that is empty
-            drop.append(j)
             car = [x for x in car_groups0 if len(x)==len(m) and x[0]==EMPTY][0]
-            num_cars_avail-=1
 
             # Find a driver. Driver must be first.
-            drivers = df_roster.loc[m, 'driver']
-            if not drivers.any():
-                drivers = df_roster.loc[m, 'Backup Driver'].str.lower()=='yes'
-                if not drivers.any():
-                    raise ValueError(f'No one in group is a driver: {m}')
-            drivers = drivers[drivers].index
-            car[0] = drivers[0]
-            available0.remove(drivers[0])
-            m.remove(drivers[0])
+            if len(avail_drivers)==0:
+                raise ValueError(f'No drivers found for group {m}')
+            elif len(avail_drivers)>1:
+                raise ValueError(f'More than 1 driver found for group {m}')
+
+            # Driver must be first
+            car[0] = avail_drivers[0]
+            num_cars_avail-=1
+            drop.append(j)
+            available0.remove(avail_drivers[0])
+            m.remove(avail_drivers[0])
+            potential_drivers.remove(avail_drivers[0])
             for k in range(len(m)):
                 car[k+1] = m[k]
                 available0.remove(m[k])
@@ -99,8 +123,6 @@ def gen_car_groups(df_roster, df_pairings, day, sht, config):
     # TODO: Add test for more code
 
     # First add drivers
-    potential_drivers = df_roster.loc[available0]['driver']
-    potential_drivers = list(potential_drivers[potential_drivers].index)
     # Ensure that drivers are not being grouped together
     for g in must_be_in_same_car:
         in_group = [x for x in potential_drivers if x in g]
@@ -398,3 +420,32 @@ def rand_car_groups(car_groups0, vols, potential_drivers, must_be_in_same_car, d
         return car_group
     else:
         raise ValueError('Failed to generate car group due to constraints on car pairings and drivers')
+
+
+def get_drivers(ncars, names, types, user_requests, subset=None, must_be_in_same_car=[]):
+    if subset:
+        types         = [x for x,y in zip(types        , names) if y in subset]
+        user_requests = [x for x,y in zip(user_requests, names) if y in subset]
+        names         = [y for   y in names                     if y in subset]
+
+
+    order = [k for k in range(len(names))]
+    random.shuffle(order)
+
+    drivers = []
+    for k in order:
+        if user_requests[k] and not any(names[k] in m and len(set(m) & set(drivers))>0 for m in must_be_in_same_car):
+            drivers.append(names[k])
+
+        if len(drivers)==ncars:
+            return drivers
+    
+    for label in [constants.ALWAYS_DRIVER, constants.PREFERRED_DRIVER, constants.BACKUP_DRIVER, constants.NEVER_DRIVER]:
+        for k in order:
+            if not user_requests[k] and types[k]==label and not any(names[k] in m and len(set(m) & set(drivers))>0 for m in must_be_in_same_car):
+                drivers.append(names[k])
+                
+            if len(drivers)==ncars:
+                return drivers
+
+    return None # Failure state

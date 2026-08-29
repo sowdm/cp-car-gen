@@ -14,8 +14,7 @@ if col1.button('Re-Generate Car Groups'):
     st.session_state['df_car_groups'] = None
     
 if not isinstance(st.session_state['df_car_groups'], pd.DataFrame):
-    st.session_state['df_car_groups'] =generator.gen_car_groups(st.session_state['df_roster'], st.session_state['df_pairings'], 
-                                                                day, gsheet, st.session_state['config'])
+    st.session_state['df_car_groups'] =st.session_state['cargen'].gen_car_groups()
 
 st.subheader('Generated Car Groups')
 st.dataframe(st.session_state['df_car_groups'], width='content')
@@ -26,4 +25,4 @@ if col0.button('Previous'):
 if col2.button('Accept Car Groups', help='Export car groups to Google sheet'):
     sheet = CAR_GROUP_WORKSHEET.format(day)
     cp_gsheet.update_sheet(gsheet['file'], sheet, st.session_state['df_car_groups'], gsheet['worksheets'])
-    st.switch_page('5_success.py')
+    st.switch_page('6_success.py')

@@ -32,8 +32,8 @@ if 'display_error' not in st.session_state:
     with open('config.toml', 'rb') as f:
         st.session_state['config'] = tomllib.load(f)
 
-pg = st.navigation([st.Page("1_get_url.py"), st.Page("2_status.py"), st.Page("3_pairings.py"), st.Page('4_cargen.py'), 
-                    st.Page('5_success.py')], position='hidden')
+pg = st.navigation([st.Page("1_get_url.py"), st.Page("2_status.py"), st.Page("3_pairings.py"), st.Page('4_drivers.py'), st.Page('5_cargen.py'), 
+                    st.Page('6_success.py')], position='hidden')
 
 # TODO: Catch not a valid URL. Restricted URL. Not writeable URL.
 
@@ -45,7 +45,7 @@ except PermissionError:
     st.error('ERROR: The entered URL has restricted access. This means only users who have explicitly been given access can use the spreadsheet.'+
              'Please reload this page and follow the instructions for sharing the Google sheet.')
 except gspread.exceptions.APIError:
-    st.error('ERROR: The enterred URL is not shared with Editor access. '+
+    st.error('ERROR: The entered URL is not shared with Editor access. '+
                  'Please reload this page and follow the instructions for sharing the Google sheet.')
 except Exception as e:
     display_msg, traceback_msg = utils.get_error_msgs(st.session_state)

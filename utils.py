@@ -1,4 +1,5 @@
 import constants
+import re
 import traceback
 
 def get_error_msgs(session_state):
@@ -13,3 +14,12 @@ def get_error_msgs(session_state):
     
     traceback_msg = str(f'Session_state:\n{session_state}\n\nError:\n{traceback.format_exc()}')
     return display_msg, traceback_msg
+
+def clean_df(df, str_cols=[]):
+    for c in df:
+        if c in str_cols:  # string
+            df[c] = df[c].apply(lambda x: re.sub(r'\s\s+', ' ', x.strip().title()) if isinstance(x,str) else x)
+        else: # Boolean
+            df[c] = df[c].apply(lambda x: bool(x) and (isinstance(x, bool) or x.lower().strip() in ['yes','x','true']))
+
+    return df

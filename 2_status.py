@@ -12,14 +12,14 @@ gsheet = base_page.setup(__file__)
 
 if st.session_state['display_error']:
     if st.session_state['display_error']['error_type'] == 'APIError':
-        st.error('ERROR: The enterred URL is not shared with Editor access. '+
-                                'Please reload this page and follow the instructions for sharing the Google sheet.')
+        st.error('ERROR: The entered URL is not shared with Editor access. If you have set access properly, try loading the spreadsheet again.'+
+                'If not, please reload this page and follow the instructions for sharing the Google sheet.')
     else:
         st.error(st.session_state['display_error']['display_msg'])
         st.download_button('Download Error Message', st.session_state['display_error']['traceback_msg'])
         st.session_state['display_error'] = {}
 
-    exit()
+    st.stop()
 
 types = [f'Has "{FULL_ROSTER_WORKSHEET}" sheet containing spreadsheet export from app', 'Initialization']
 states = [gsheet['has_cp_export'], gsheet['is_init']]
@@ -67,6 +67,7 @@ else:
         st.switch_page('1_get_url.py')
 
     if col1.button(f'Create Day {nextday} Car Group', disabled=is_complete, help=f'Generate car group for Day {nextday}'):
+        st.session_state['df_roster'] = None
         st.switch_page('3_pairings.py')
         
     def del_car_group():
@@ -84,5 +85,5 @@ else:
         gsheet['worksheets'] = [x.title for x in gsheet['file'].worksheets()]
         gsheet['is_init'] = False
 
-    col3.button(f'Re-Initialize', disabled=not gsheet['is_init'], 
+    col3.button(f'Reset', disabled=not gsheet['is_init'], 
                     help=f'Reset the spreadsheet. Remove all the auto-generated sheets except "{FULL_ROSTER_WORKSHEET}"', on_click=start_over)
