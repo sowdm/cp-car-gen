@@ -60,7 +60,7 @@ else:
 
                 col1, col2 = st.columns(2)
                 if col1.button('Previous'):
-                    st.switch_page('3_pairings.py')
+                    st.switch_page('4_pairings.py')
                 col2.button('Reload Spreadsheet', on_click=reload, 
                     help=f'Reload "{DRIVER_WORKSHEET}" tab from Google sheet (for example if changes were made)')
                 st.stop()
@@ -112,7 +112,7 @@ for m in must_be_in_same_car:
 
 col0, col1, col2 = st.columns(3)
 if col0.button('Previous'):
-    st.switch_page('3_pairings.py')
+    st.switch_page('4_pairings.py')
 
 col1.button('Reload Spreadsheet', on_click=reload, 
             help=f'Reload "{DRIVER_WORKSHEET}" tab from Google sheet (for example if changes were made)')
@@ -122,7 +122,7 @@ if col2.button('Accept Drivers', disabled=disabled):
     st.session_state['not_drivers'] = selection[1]['items']
     selected_drivers.extend(st.session_state['separate_car_drivers'])
     st.session_state['cargen'].set_drivers(selected_drivers)
-    st.switch_page('5_cargen.py')
+    st.switch_page('6_cargen.py')
 
 st.subheader('Importable Driver Selections and Preferences')
 st.markdown(f'There are 2 ways to control the default drivers in the "{DRIVER_WORKSHEET}" tab of the Google spreadsheet\n'+

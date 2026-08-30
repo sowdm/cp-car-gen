@@ -32,8 +32,9 @@ if 'display_error' not in st.session_state:
     with open('config.toml', 'rb') as f:
         st.session_state['config'] = tomllib.load(f)
 
-pg = st.navigation([st.Page("1_get_url.py"), st.Page("2_status.py"), st.Page("3_pairings.py"), st.Page('4_drivers.py'), st.Page('5_cargen.py'), 
-                    st.Page('6_success.py')], position='hidden')
+pg = st.navigation([st.Page("1_get_url.py"), st.Page("2_status.py"), st.Page('3_roster.py'),
+                    st.Page("4_pairings.py"), st.Page('5_drivers.py'), st.Page('6_cargen.py'), 
+                    st.Page('7_success.py')], position='hidden')
 
 # TODO: Catch not a valid URL. Restricted URL. Not writeable URL.
 

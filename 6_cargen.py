@@ -20,9 +20,9 @@ st.subheader('Generated Car Groups')
 st.dataframe(st.session_state['df_car_groups'], width='content')
 
 if col0.button('Previous'):
-    st.switch_page('3_pairings.py')
+    st.switch_page('5_drivers.py')
 
 if col2.button('Accept Car Groups', help='Export car groups to Google sheet'):
     sheet = CAR_GROUP_WORKSHEET.format(day)
     cp_gsheet.update_sheet(gsheet['file'], sheet, st.session_state['df_car_groups'], gsheet['worksheets'])
-    st.switch_page('6_success.py')
+    st.switch_page('7_success.py')

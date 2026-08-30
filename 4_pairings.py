@@ -1,14 +1,11 @@
 import pandas as pd
-import re
 import streamlit as st
 import uuid
 
 import base_page
 import cp_gsheet
-from worksheets import ROSTER_WORKSHEET, PAIRINGS_WORKSHEET
-import columns
+from worksheets import PAIRINGS_WORKSHEET
 from columns import NAME1_COL, NAME2_COL, PAIR_COL, SEPARATE_COL, NAME_COL
-from constants import MARK
 from generator import CarGenerator
 
 gsheet = base_page.setup(__file__)
@@ -24,35 +21,25 @@ st.info('1. Input people who must OR must NOT be paired in the same car. For gro
 if 'reload_pairs' not in st.session_state:
     st.session_state['reload_pairs'] = True
 
+df_roster = st.session_state['df_roster']
 if not st.session_state['reload_pairs'] and isinstance(st.session_state['df_roster'], pd.DataFrame):
-    df_roster = st.session_state['df_roster']
     df_pairings = st.session_state['df_pairings']
 else:
-    df_roster = cp_gsheet.get_sheet(gsheet['file'], ROSTER_WORKSHEET, clean=True, 
-                                    str_cols=[NAME_COL, columns.HALF_DAY_COL, columns.GENERATION_COL, columns.EXPERIENCE_COL])
-    day_cols = [x for x in df_roster.columns if re.search(r'^Day\s\d+\s', x)]
-
     df_pairings_full = cp_gsheet.get_sheet(gsheet['file'], PAIRINGS_WORKSHEET, clean=True, str_cols=[NAME1_COL, NAME2_COL])
 
-    st.session_state['day'] = cp_gsheet.set_day('NEXT', gsheet['worksheets'], len(day_cols))
-
     day_col = [x for x in df_pairings_full.columns if x.startswith(f'Day {st.session_state['day']}')][0]
-
     df_pairings = df_pairings_full[df_pairings_full[day_col]].reset_index(drop=True) if len(df_pairings_full)>0 else df_pairings_full
-    df_roster = df_roster[df_roster[day_col]].reset_index(drop=True)
-
     df_pairings = df_pairings[[NAME1_COL, NAME2_COL, PAIR_COL, SEPARATE_COL]]
 
     # Remove pairings where either person is not here
     keep = df_pairings[NAME1_COL].isin(df_roster[NAME_COL]) & df_pairings[NAME2_COL].isin(df_roster[NAME_COL])
     df_pairings = df_pairings[keep]
 
-    st.session_state['df_roster'] = df_roster
     st.session_state['df_pairings'] = df_pairings
     st.session_state['reload_pairs'] = False
     st.session_state['pairings_key'] = uuid.uuid4()
 
-# TODO: Add validation!!!
+# TODO: Add validation of rows!!!
 
 name_config = st.column_config.SelectboxColumn(options=df_roster['Name'].tolist())
 pair_config = st.column_config.CheckboxColumn(help='Check if 2 people MUST be in the same car. Uncheck if 2 people must NOT be in the same car', default=True)
@@ -66,7 +53,7 @@ st.markdown('**TIP**: To delete a row, select the empty column on the left of th
 
 col0, col1, col2 = st.columns(3)
 if col0.button('Previous'):
-    st.switch_page('2_status.py')
+    st.switch_page('3_roster.py')
 
 def reload():
     st.session_state['reload_pairs'] = True
@@ -81,7 +68,7 @@ if col2.button('Accept Pairings'):
     st.session_state['drivers'] = None
     st.session_state['df_car_groups'] = None
     st.session_state['cargen'] = CarGenerator(df_roster, df, st.session_state['day'], gsheet, st.session_state['config'])
-    st.switch_page('4_drivers.py')
+    st.switch_page('5_drivers.py')
 
 st.subheader('Importable Pairings')
 st.text(f'The default pairings shown here are from "{PAIRINGS_WORKSHEET}" sheet of Google spreadsheet. '+

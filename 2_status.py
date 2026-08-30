@@ -68,7 +68,7 @@ else:
 
     if col1.button(f'Create Day {nextday} Car Group', disabled=is_complete, help=f'Generate car group for Day {nextday}'):
         st.session_state['df_roster'] = None
-        st.switch_page('3_pairings.py')
+        st.switch_page('3_roster.py')
         
     def del_car_group():
         sheet = CAR_GROUP_WORKSHEET.format(nextday-1)
