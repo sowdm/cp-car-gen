@@ -7,8 +7,9 @@ import re
 
 import constants
 from cp_gsheet import get_sheet
-from worksheets import CAR_GROUP_WORKSHEET, DRIVER_WORKSHEET
-from columns import PAIR_COL, NAME1_COL, NAME2_COL, SEPARATE_COL, GENERATION_COL, EXPERIENCE_COL
+from worksheets import CAR_GROUP_WORKSHEET
+import columns
+from columns import PAIR_COL, NAME1_COL, NAME2_COL, SEPARATE_COL, GENERATION_COL, EXPERIENCE_COL, AFFILIATION_COL
 from constants import EMPTY
 
 class CarGenerator:
@@ -29,8 +30,10 @@ class CarGenerator:
         gen_labels, new_age_cats = combine_age_groups(self.df_roster[GENERATION_COL], age_cats, self.config)
     
         # Convert to index values
+        
         self.df_roster['age'] = gen_labels.apply(lambda x: new_age_cats.index(x))
-        self.df_roster['bipoc'] = self.df_roster['BIPOC Status'].apply(lambda x: list(self.df_roster['BIPOC Status'].unique()).index(x))
+        # No longer used
+        # self.df_roster['bipoc'] = self.df_roster['BIPOC Status'].apply(lambda x: list(self.df_roster['BIPOC Status'].unique()).index(x))
         self.df_roster['experience'] = combine_experience_groups(self.df_roster[EXPERIENCE_COL], self.day)
     
         self.must_be_in_same_car, self.separate_car, self.do_not_pair = get_pairs(self.df_pairings)
@@ -76,79 +79,27 @@ def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, se
 
     # Create a mapping of volunteers who have previously been paired
     num_vols = len(df_roster)
-    prev_pair = np.zeros((num_vols,num_vols))
-    for d in range(day-1):
-        df_past = get_sheet(sht['file'], CAR_GROUP_WORKSHEET.format(d+1))
-
-        # Populate prev_pair
-        for c in df_past['Car'].unique():
-            matches = df_roster['Name'].isin(df_past['Name'][df_past['Car']==c])
-            for i in matches[matches].index:
-                for j in matches[matches].index:
-                    if i!=j:
-                        prev_pair[i,j]+=1
-
+    prev_pair = get_paired_on_previous_days(df_roster, sht, day, num_vols)
+    
     # Add groups consisting of people who must be in the same car AND either:
     # 1. must be in their own separate car OR
-    # 2. have a driver in their car
+    # 2. fill a car
     available0 = list(df_roster.index)
-    num_cars_avail = len(car_groups0)
-    drop = []
-    for j, (m,s) in enumerate(zip(must_be_in_same_car, separate_car)):
-        avail_drivers = [x for x in potential_drivers if x in m]
-        if s or len(m)>=FULL_CAR_SIZE or len(avail_drivers)>0:
-            # Find car of this size that is empty
-            car = [x for x in car_groups0 if len(x)==len(m) and x[0]==EMPTY][0]
-
-            # Find a driver. Driver must be first.
-            if len(avail_drivers)==0:
-                raise ValueError(f'No drivers found for group {m}')
-            elif len(avail_drivers)>1:
-                raise ValueError(f'More than 1 driver found for group {m}')
-
-            # Driver must be first
-            car[0] = avail_drivers[0]
-            num_cars_avail-=1
-            drop.append(j)
-            available0.remove(avail_drivers[0])
-            m.remove(avail_drivers[0])
-            potential_drivers.remove(avail_drivers[0])
-            for k in range(len(m)):
-                car[k+1] = m[k]
-                available0.remove(m[k])
-
+    num_cars_avail, drop = fill_required_groups(available0, car_groups0, must_be_in_same_car, separate_car, FULL_CAR_SIZE, potential_drivers)
+    
     # Remove pairings that have already been used
     must_be_in_same_car = [x for k, x in enumerate(must_be_in_same_car) if k not in drop]
 
     # TODO: Add test for more code
-
-    # First add drivers
-    # Ensure that drivers are not being grouped together
+    
+    # If a required grouping contains multiple drivers, only keep 1
     for g in must_be_in_same_car:
         in_group = [x for x in potential_drivers if x in g]
         if len(in_group)>1:
             random.shuffle(in_group)  # First one will be kept
             potential_drivers = [x for x in potential_drivers if x not in in_group[1:]]
 
-    if len(potential_drivers)<num_cars_avail:
-        # Need to add some backup drivers
-        backups = df_roster.loc[available0]['Backup Driver'].str.lower()=='yes'
-        backups = backups[backups].index
-
-        backups = list(set(backups) - set(potential_drivers)) # Ensure no overlap
-        # Ensure that drivers are not being grouped together
-        for g in must_be_in_same_car:
-            in_group = [x for x in backups if x in g]
-            in_group_drivers = [x for x in potential_drivers if x in g]
-            if len(in_group_drivers)>0:
-                backups = [x for x in backups if x not in in_group]
-            elif len(in_group)>1:
-                random.shuffle(in_group)  # First one will be kept
-                backups = [x for x in backups if x not in in_group[1:]]
-
-        random.shuffle(backups)
-        potential_drivers.extend(backups[:num_cars_avail - len(potential_drivers)])
-
+    assert len(potential_drivers)>=num_cars_avail
 
     ntrials = 100
     min_score = 1e6
@@ -159,14 +110,30 @@ def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, se
         for k in range(len(car_groups)):
             car = car_groups[k]
 
-            bipoc_score = df_roster.loc[car,'bipoc'].duplicated().sum()
+            # Original
+            # bipoc_score = df_roster.loc[car,'bipoc'].duplicated().sum()
+
+            # TODO: Utilize https://gspread-formatting.readthedocs.io/en/latest/index.html
+
+            # Updated
+            if day==1:
+                # TODO: Update based on each academy student's first day
+                is_bipoc = df_roster.loc[car,columns.BIPOC_COL]
+                is_academy = df_roster.loc[car, AFFILIATION_COL].str.lower().str.contains('action academy')
+                bipoc_score = is_academy[is_bipoc].sum()>0 and is_bipoc.sum()==1  # Do we have 1 academy bipoc and only 1 bipoc in car
+                academy_score = is_academy.sum()==1
+            else:
+                bipoc_score = 0
+                academy_score = 0
+
             age_score = df_roster.loc[car,'age'].duplicated().sum()
             exp_score = df_roster.loc[car,'experience'].duplicated().sum()
 
             idx = car[None]*prev_pair.shape[0] + car[:,None]  # Get 1-D indices for all pairs
             prev_score = prev_pair.flatten()[idx].sum() / 2  # prev_pair is symmetric. Divide by 2 to only sum 1 side
 
-            score+=config['BIPOC_WEIGHT'] * bipoc_score + config['AGE_WEIGHT'] * age_score + config['EXP_WEIGHT'] * exp_score + config['PREV_WEIGHT'] * prev_score
+            score+=config['ACADEMY_WEIGHT'] * academy_score + config['BIPOC_WEIGHT'] * bipoc_score + config['AGE_WEIGHT'] * age_score + \
+                config['EXP_WEIGHT'] * exp_score + config['PREV_WEIGHT'] * prev_score
 
         if score < min_score:
             best_group = car_groups
@@ -180,7 +147,7 @@ def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, se
             out['Car'].append(car+1)
             out['Name'].append(df_roster.loc[v, 'Name'])
             out['Gen'].append(df_roster.loc[v, 'age'])
-            out['BIPOC'].append(df_roster.loc[v, 'bipoc'])
+            out['BIPOC'].append(df_roster.loc[v, columns.BIPOC_COL])
             out['Exp'].append(df_roster.loc[v, 'experience'])
 
     df_out = pd.DataFrame(out)
@@ -302,49 +269,14 @@ def get_car_sizes(num_vols0, must_be_in_same_car, separate_car, FULL_CAR_SIZE):
 def rand_car_groups(car_groups0, vols, potential_drivers, must_be_in_same_car, do_not_pair, experience):
     
     max_iter = 20
-    for _ in range(max_iter):
+    for k in range(max_iter):
         random.shuffle(potential_drivers)
         car_group = copy.deepcopy(car_groups0)
         avail = [True for _ in range(len(vols))]
 
         avail_groups = [True for _ in range(len(must_be_in_same_car))]
 
-        # Add driver to each car
-        avail_drivers = [True for _ in range(len(potential_drivers))]
-        fail = False
-        for k in range(len(car_group)):
-            if car_group[k][0]==EMPTY:
-                for d in range(len(potential_drivers)):
-                    if not avail_drivers[d]:
-                        continue
-
-                    # Check if driver is part of group
-                    g = [x for x in must_be_in_same_car if potential_drivers[d] in x]
-                    # Check if car is big enough
-                    if len(g)>0:
-                        g = g[0]
-                        if len(car_group[k])<len(g):
-                            continue
-
-                        avail_groups[must_be_in_same_car.index(g)] = False
-                        car_group[k][0] = potential_drivers[d]
-                        avail[vols.index( potential_drivers[d])] = False
-                        for j in range(1,len(car_group[k])):
-                            for n in range(len(g)):
-                                if avail[vols.index(g[n])]:
-                                    car_group[k][j] = g[n]
-                                    avail[vols.index(g[n])] = False
-                                    break
-                    else:
-                        # Not in group
-                        car_group[k][0] = potential_drivers[d]
-                        avail[vols.index( potential_drivers[d])] = False
-                    avail_drivers[d] = False
-                    break
-                else:
-                    fail = True
-                    break
-
+        fail = add_drivers_to_cars(car_group, potential_drivers, must_be_in_same_car, avail_groups, avail, vols)
         if fail:
             continue
 
@@ -449,3 +381,84 @@ def get_drivers(ncars, names, types, user_requests, subset=None, must_be_in_same
                 return drivers
 
     return None # Failure state
+
+def get_paired_on_previous_days(df_roster, sht, day, num_vols):
+    prev_pair = np.zeros((num_vols,num_vols))
+    for d in range(day-1):
+        df_past = get_sheet(sht['file'], CAR_GROUP_WORKSHEET.format(d+1))
+
+        # Populate prev_pair
+        for c in df_past['Car'].unique():
+            matches = df_roster['Name'].isin(df_past['Name'][df_past['Car']==c])
+            for i in matches[matches].index:
+                for j in matches[matches].index:
+                    if i!=j:
+                        prev_pair[i,j]+=1
+
+    return prev_pair
+
+def fill_required_groups(available0, car_groups0, must_be_in_same_car, separate_car, FULL_CAR_SIZE, potential_drivers):
+    num_cars_avail = len(car_groups0)
+    drop = []
+    for j, (m,s) in enumerate(zip(must_be_in_same_car, separate_car)):
+        if s or len(m)>=FULL_CAR_SIZE:
+            # Find car of this size that is empty
+            car = [x for x in car_groups0 if len(x)==len(m) and x[0]==EMPTY][0]
+
+            # Find a driver. Driver must be first.
+            avail_drivers = [x for x in potential_drivers if x in m]
+            if len(avail_drivers)==0:
+                raise ValueError(f'No drivers found for group {m}')
+            elif len(avail_drivers)>1:
+                raise ValueError(f'More than 1 driver found for group {m}')
+
+            # Driver must be first
+            car[0] = avail_drivers[0]
+            num_cars_avail-=1
+            drop.append(j)
+            available0.remove(avail_drivers[0])
+            m.remove(avail_drivers[0])
+            potential_drivers.remove(avail_drivers[0])
+            for k in range(len(m)):
+                car[k+1] = m[k]
+                available0.remove(m[k])
+
+    return num_cars_avail, drop
+
+def add_drivers_to_cars(car_group, potential_drivers, must_be_in_same_car, avail_groups, avail, vols):
+    fail = False
+    avail_drivers = [True for _ in range(len(potential_drivers))]
+    for k in range(len(car_group)):
+        if car_group[k][0]==EMPTY:
+            for d in range(len(potential_drivers)):
+                if not avail_drivers[d]:
+                    continue
+
+                # Check if driver is part of group
+                g = [x for x in must_be_in_same_car if potential_drivers[d] in x]
+                # Check if car is big enough
+                if len(g)>0:
+                    g = g[0]
+                    if len(car_group[k])<len(g):
+                        continue
+
+                    avail_groups[must_be_in_same_car.index(g)] = False
+                    car_group[k][0] = potential_drivers[d]
+                    avail[vols.index( potential_drivers[d])] = False
+                    for j in range(1,len(car_group[k])):
+                        for n in range(len(g)):
+                            if avail[vols.index(g[n])]:
+                                car_group[k][j] = g[n]
+                                avail[vols.index(g[n])] = False
+                                break
+                else:
+                    # Not in group
+                    car_group[k][0] = potential_drivers[d]
+                    avail[vols.index( potential_drivers[d])] = False
+                avail_drivers[d] = False
+                break
+            else:
+                fail = True
+                break
+
+    return fail

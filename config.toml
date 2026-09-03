@@ -4,7 +4,9 @@ FULL_CAR_SIZE = 4
 # The number of age groups will be consolidated into at most this many groups
 NUM_AGE_GROUPS = 3
 
-# How much to weight BIPOC diversity
+# Used on 1st day to penalize if there is only 1 academy studen in a car group
+ACADEMY_WEIGHT = 1
+# Used on 1st day to penalize if an academy BIPOC student is the only BIPOC in car group
 BIPOC_WEIGHT = 1
 # How much to weight age diversity
 AGE_WEIGHT = 1

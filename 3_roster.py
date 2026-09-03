@@ -17,7 +17,7 @@ st.info(f'The below roster is correct if the "{ROSTER_WORKSHEET}" of the Google 
         '\n\nIf is not, update it and press the "Reload Spreadsheet" button below')
 
 df_roster = cp_gsheet.get_sheet(gsheet['file'], ROSTER_WORKSHEET, clean=True, 
-                                str_cols=[NAME_COL, columns.HALF_DAY_COL, columns.GENERATION_COL, columns.EXPERIENCE_COL])
+                                str_cols=[NAME_COL, columns.HALF_DAY_COL, columns.GENERATION_COL, columns.EXPERIENCE_COL, columns.AFFILIATION_COL])
 day_cols = [x for x in df_roster.columns if re.search(r'^Day\s\d+\s', x)]
 
 st.session_state['day'] = cp_gsheet.set_day('NEXT', gsheet['worksheets'], len(day_cols))
