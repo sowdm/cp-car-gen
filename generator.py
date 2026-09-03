@@ -176,7 +176,8 @@ def combine_age_groups(gen_labels, age_cats, config):
 def combine_experience_groups(exp_labels, day):
     # People will have increased experience as the trip continues
 
-    with_cp = exp_labels.str.contains('with CP') & (~exp_labels.str.contains('not with CP'))
+    exp_labels = exp_labels.str.lower()
+    with_cp = exp_labels.str.contains('with cp') & (~exp_labels.str.contains('not with cp'))
     a_lot = exp_labels.str.contains('a lot')
     labels = (with_cp & a_lot).astype('int')
     if day<3:
