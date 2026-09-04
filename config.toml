@@ -5,9 +5,9 @@ FULL_CAR_SIZE = 4
 NUM_AGE_GROUPS = 3
 
 # Used on 1st day to penalize if there is only 1 academy studen in a car group
-ACADEMY_WEIGHT = 1
+ACADEMY_WEIGHT = 2
 # Used on 1st day to penalize if an academy BIPOC student is the only BIPOC in car group
-BIPOC_WEIGHT = 1
+BIPOC_WEIGHT = 2
 # How much to weight age diversity
 AGE_WEIGHT = 1
 # How much to weight experience diversity
