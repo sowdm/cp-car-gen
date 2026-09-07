@@ -18,25 +18,17 @@ st.set_page_config(
     }
 )
 
-st.warning(r'This app is intended to provide a 90% solution for generating your car groups. ' \
-    'You should review the results and update manually as needed.\n\n' \
-    'Also, this is a BETA version of this app. Thank you for testing it, and we hope you find it useful. ' \
-    f'If you encounter any issues, please contact [admin](mailto:{constants.EMAIL}).')
-
-
-if 'display_error' not in st.session_state:
+if 'client' not in st.session_state:
     st.session_state['is_sample'] = False
     conn = st.connection("gsheets", type=GSheetsConnection)
     st.session_state['client'] = conn.client._client
-    st.session_state['display_error'] = {}
     with open('config.toml', 'rb') as f:
         st.session_state['config'] = tomllib.load(f)
 
-pg = st.navigation([st.Page("1_get_url.py"), st.Page("2_status.py"), st.Page('3_roster.py'),
+pg = st.navigation([st.Page("1_get_url.py"), st.Page("2_select_my_own_url.py"), st.Page('2a_car_group_error.py'),
+                    st.Page('3_roster.py'),
                     st.Page("4_pairings.py"), st.Page('5_drivers.py'), st.Page('6_cargen.py'), 
                     st.Page('7_success.py')], position='hidden')
-
-# TODO: Catch not a valid URL. Restricted URL. Not writeable URL.
 
 try:
     pg.run()
@@ -54,4 +46,4 @@ except Exception as e:
     st.download_button('Download Error Message', traceback_msg)
     raise
 
-st.info(f'If you encounter any issues with this site, please contact [admin](mailto:{constants.EMAIL})')
+st.info(f'Please contact [{constants.EMAIL}](mailto:{constants.EMAIL}) with issues/comments/suggestions for this site.')

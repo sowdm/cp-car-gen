@@ -52,11 +52,11 @@ else:
             group_drivers = [x for x in m if x in names]
             if len(group_drivers)==0:
                 if s:
-                    st.error(f'No drivers found in paired group {m} that much be in a separate car. Press Previous below to update pairings '+
-                             f' on Pairings page or update the {DRIVER_WORKSHEET} tab of the Google sheet and press Reload below.')
+                    st.error(f'No drivers found in paired group {m} that much be in a separate car. Press Previous to update pairings '+
+                             f'or update the {DRIVER_WORKSHEET} tab of the Google sheet and press Reload.')
                 else:
-                    st.error(f'No drivers found in paired group {m} who must be in a separate car due to size. Press Previous below to update pairings '+
-                            f' on Pairings page or update the {DRIVER_WORKSHEET} tab of the Google sheet and press Reload below.')
+                    st.error(f'No drivers found in paired group {m} who must be in a separate car due to size. Press Previous to update pairings '+
+                            f'or update the {DRIVER_WORKSHEET} tab of the Google sheet and press Reload.')
 
                 col1, col2 = st.columns(2)
                 if col1.button('Previous'):
@@ -92,7 +92,9 @@ original_items = [
     {'header': 'NOT Drivers', 'items': not_drivers}
 ]
 
-st.markdown(f'Select drivers for {ncars} remaining cars:')
+st.markdown(f'Select drivers for {ncars} remaining cars by dragging between the Drivers and NOT Drivers lists')
+
+col0, col1, col2 = st.columns(3)
 
 selection = sort_items(original_items, multi_containers=True, direction='vertical')
 
@@ -110,7 +112,6 @@ for m in must_be_in_same_car:
         disabled = True
         st.error(f'ERROR: More than one driver selected from paired group: {m}')
 
-col0, col1, col2 = st.columns(3)
 if col0.button('Previous'):
     st.switch_page('4_pairings.py')
 

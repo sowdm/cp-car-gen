@@ -1,3 +1,6 @@
+# Number of random cars to test
+MONTE_CARLO_SIZE = 200
+
 # Number of people in a full car
 FULL_CAR_SIZE = 4
 
@@ -5,9 +8,9 @@ FULL_CAR_SIZE = 4
 NUM_AGE_GROUPS = 3
 
 # Used on 1st day to penalize if there is only 1 academy studen in a car group
-ACADEMY_WEIGHT = 2
+ACADEMY_WEIGHT = 3
 # Used on 1st day to penalize if an academy BIPOC student is the only BIPOC in car group
-BIPOC_WEIGHT = 2
+BIPOC_WEIGHT = 3
 # How much to weight age diversity
 AGE_WEIGHT = 1
 # How much to weight experience diversity

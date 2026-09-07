@@ -60,13 +60,15 @@ class CarGenerator:
     def set_drivers(self, drivers):
         self.drivers = drivers
 
-    def gen_car_groups(self):
+    def gen_car_groups(self, pbar):
         return  gen_car_groups(self.df_roster, self.drivers, self.config, self.carsizes, 
                                self.must_be_in_same_car, self.separate_car, self.FULL_CAR_SIZE,
-                               self.do_not_pair, self.sht, self.day)
+                               self.do_not_pair, self.sht, self.day, self.config['MONTE_CARLO_SIZE'],
+                               pbar=pbar)
 
 
-def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, separate_car, FULL_CAR_SIZE, do_not_pair, sht, day):
+def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, separate_car, 
+                   FULL_CAR_SIZE, do_not_pair, sht, day, ntrials, pbar=None):
     df_roster = df_roster.copy()
 
     # Convert names to indices
@@ -101,9 +103,8 @@ def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, se
 
     assert len(potential_drivers)>=num_cars_avail
 
-    ntrials = 100
     min_score = 1e6
-    for _ in range(ntrials):
+    for j in range(ntrials):
         car_groups = rand_car_groups(car_groups0, available0, potential_drivers, must_be_in_same_car, do_not_pair, df_roster['experience'])
 
         score = 0
@@ -139,16 +140,20 @@ def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, se
             best_group = car_groups
             min_score = score
 
-    out = {'Role':[], 'Car':[], 'Name':[], 'Gen':[], 'BIPOC':[], 'Exp':[]}
+        if pbar:
+            pbar.progress(j / ntrials, text=f'{j} of {ntrials} car groups simulated')
+
+    out = {'Car':[], columns.NAME_COL:[], 'Role':[], columns.GENERATION_COL:[], columns.BIPOC_COL:[], columns.EXPERIENCE_COL:[], columns.AFFILIATION_COL:[]}
     for car, team in enumerate(best_group):
         for k,v in enumerate(team):
             role = 'Driver' if k==0 else ''
             out['Role'].append(role)
             out['Car'].append(car+1)
-            out['Name'].append(df_roster.loc[v, 'Name'])
-            out['Gen'].append(df_roster.loc[v, 'age'])
-            out['BIPOC'].append(df_roster.loc[v, columns.BIPOC_COL])
-            out['Exp'].append(df_roster.loc[v, 'experience'])
+            out[columns.NAME_COL].append(df_roster.loc[v, columns.NAME_COL])
+            out[columns.GENERATION_COL].append(df_roster.loc[v, columns.GENERATION_COL])
+            out[columns.BIPOC_COL].append('Yes' if df_roster.loc[v, columns.BIPOC_COL] else 'No')
+            out[columns.EXPERIENCE_COL].append(df_roster.loc[v, columns.EXPERIENCE_COL])
+            out[columns.AFFILIATION_COL].append(df_roster.loc[v, columns.AFFILIATION_COL])
 
     df_out = pd.DataFrame(out)
 
@@ -189,17 +194,23 @@ def combine_experience_groups(exp_labels, day):
             labels+=1
             labels[~with_cp & ~a_lot] = 0
         elif labels.mean()<0.5:
+            # Over 50% have at least some CP experience
             # 2= Lots of CP experience
             # 1= Some CP experience
             # 0= No CP experience
             labels+=1
             labels[~with_cp] = 0
+        else:
+            # Over 50% have lots of CP experience
+            # 1= Lots of CP experience
+            # 0= everyone else
+            pass
     elif day==3:
         # 1= CP experience or lots of canvass experience
         # 0= Little canvass experience
         labels = with_cp | a_lot
     else:
-        labels = labels | (~labels)  # Everyone is the same
+        labels = labels | (~labels)  # Everyone is the same (ignore experience)
 
     return labels
 
@@ -267,12 +278,18 @@ def get_car_sizes(num_vols0, must_be_in_same_car, separate_car, FULL_CAR_SIZE):
     assert sum(carsizes)==num_vols0
     return carsizes
 
-def rand_car_groups(car_groups0, vols, potential_drivers, must_be_in_same_car, do_not_pair, experience):
+def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0, do_not_pair0, experience0):
     
     max_iter = 20
     for k in range(max_iter):
-        random.shuffle(potential_drivers)
         car_group = copy.deepcopy(car_groups0)
+        vols = copy.deepcopy(vols0)
+        potential_drivers = copy.deepcopy(potential_drivers0)
+        must_be_in_same_car = copy.deepcopy(must_be_in_same_car0)
+        do_not_pair = copy.deepcopy(do_not_pair0)
+        experience = copy.deepcopy(experience0)
+
+        random.shuffle(potential_drivers)
         avail = [True for _ in range(len(vols))]
 
         avail_groups = [True for _ in range(len(must_be_in_same_car))]
@@ -284,7 +301,6 @@ def rand_car_groups(car_groups0, vols, potential_drivers, must_be_in_same_car, d
         max_experience = experience.max()
 
         rem_groups = [x for x,y in zip(must_be_in_same_car, avail_groups) if y]
-        random.shuffle(rem_groups)
         # Insert all groups
         for g in rem_groups:
             # Find cars with enough space
@@ -302,7 +318,8 @@ def rand_car_groups(car_groups0, vols, potential_drivers, must_be_in_same_car, d
                     car[np.where(car==EMPTY)[0][:len(g)]] = g
                     break
             else:
-                fail = True
+                # Put in first available car. This is use selection. Don't worry about experience
+                avail_cars[0][np.where(avail_cars[0]==EMPTY)[0][:len(g)]] = g
                 break
 
         if fail:

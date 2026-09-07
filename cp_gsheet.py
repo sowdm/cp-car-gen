@@ -4,10 +4,10 @@ import re
 import numpy as np
 import pandas as pd
 
-from columns import DATES_COL, DELETE_COLS, INIT_PAIRINGS_COLS, ORIG_COLS, RENAME_COLS, NAME_COL, DRIVER_TYPE_COL
+from columns import DATES_COL, DELETE_COLS, ORIG_COLS, RENAME_COLS, NAME_COL, DRIVER_TYPE_COL
 import constants
 import utils
-from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, PAIRINGS_WORKSHEET, ROSTER_WORKSHEET, SHEET_INDICATOR, DRIVER_WORKSHEET
+from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, SHEET_INDICATOR, DRIVER_WORKSHEET
 
 
 def get_sheet(sht, name, clean=False, str_cols=[]):
@@ -29,11 +29,12 @@ def get_spreadsheet(client: gspread.client.Client, url: str):
     sht = client.open_by_url(url)
     worksheet_list = [x.title for x in sht.worksheets() if x.title.startswith(SHEET_INDICATOR)]
     has_cp_export = FULL_ROSTER_WORKSHEET in worksheet_list
-    is_init = ROSTER_WORKSHEET in worksheet_list and PAIRINGS_WORKSHEET in worksheet_list and DRIVER_WORKSHEET in worksheet_list
+    is_init = ROSTER_WORKSHEET in worksheet_list and DRIVER_WORKSHEET in worksheet_list
 
     dts = None
     date_has_car_group = None
     error = False
+    is_complete = False
     if has_cp_export:
         df = get_sheet(sht, FULL_ROSTER_WORKSHEET)
         has_cp_export = 'Canvassing Dates' in df
@@ -47,23 +48,35 @@ def get_spreadsheet(client: gspread.client.Client, url: str):
             date_has_car_group = [CAR_GROUP_WORKSHEET.format(k+1) in worksheet_list for k in range(len(dts))]
             if any(date_has_car_group):
                 # Ensure that there are no gaps in dates with car groups
-                start = date_has_car_group.index(True)
-                end = len(date_has_car_group)-1-date_has_car_group[::-1].index(True)
-                error = not all(date_has_car_group[start:end+1])
+                error = not date_has_car_group[0] and any(date_has_car_group)
+                if not error:
+                    false_found = False
+                    for has_car_group in date_has_car_group:
+                        if false_found and has_car_group:
+                            error = True
+                            break
+                        elif not has_car_group:
+                            false_found = True
+
+                is_complete = all(date_has_car_group)
 
     return {'url':url, 'file':sht, 'worksheets':worksheet_list, 'has_cp_export':has_cp_export, 'is_init':is_init,
-            'dates':dts,'date_has_car_group':date_has_car_group, 'car_group_date_error':error}
+            'dates':dts,'date_has_car_group':date_has_car_group, 'car_group_date_error':error,
+            'is_complete':is_complete}
 
 
-def update_sheet(sht, name, df, worksheet_list):
+def update_sheet(sht, name, df, worksheet_list, color=None, index=None):
     if name in worksheet_list:
         worksheet = sht.worksheet(name)
         worksheet.clear()
     else:
-        worksheet = sht.add_worksheet(name, rows=0, cols=0)
+        worksheet = sht.add_worksheet(name, rows=0, cols=0, index=index)
 
     data = [[int(x) if isinstance(x, np.int64) else x for x in y] for y in df.values.tolist()]
     worksheet.update([df.columns.values.tolist()] + data)
+
+    if color:
+        worksheet.update_tab_color(color)
 
 
 def init(gsheet):
@@ -109,12 +122,7 @@ def init(gsheet):
     for c in day_cols:
         df_drivers[c] = ''
 
-    pairings_cols = INIT_PAIRINGS_COLS.copy()
-    pairings_cols.extend(day_cols)
-    df_pairings = pd.DataFrame([], columns=pairings_cols)
-
     update_sheet(sht, ROSTER_WORKSHEET, df_roster, worksheet_list)
-    update_sheet(sht, PAIRINGS_WORKSHEET, df_pairings, worksheet_list)
     update_sheet(sht, DRIVER_WORKSHEET, df_drivers, worksheet_list)
 
 
@@ -133,3 +141,25 @@ def set_day(mode, worksheet_list, ndays):
     assert group_created[:day-1].all(), f'Attempting to generate car groups for day {day} but not all car groups have been made before day {day}'
     assert day<=ndays, 'Car group requested for a day beyond the number of days in the trip'
     return day
+
+def load_url(client, url):
+    url = url.strip()
+    try:
+        gsheet = get_spreadsheet(client, url)
+    except PermissionError:
+        errmsg = 'The entered URL has not been shared with this app. Please follow the instructions below for sharing your Google spreadsheet.'
+        return None, errmsg
+        
+    errmsg = None
+    if not gsheet['has_cp_export']:
+        errmsg = f'Spreadsheet does not have sheet called "{FULL_ROSTER_WORKSHEET}" containing the roster' +\
+                ' from the app. Please follow the instructions below for setting up your Google spreadsheet.'
+    elif not gsheet['is_init']:
+        try:
+            init(gsheet)
+            gsheet = get_spreadsheet(client, url)
+        except gspread.exceptions.APIError:
+            errmsg = 'The entered URL is not shared with Editor access. Please follow the instructions below for setting up your Google spreadsheet. ' \
+                'If you have set access properly, try loading the spreadsheet again.'
+
+    return gsheet, errmsg
