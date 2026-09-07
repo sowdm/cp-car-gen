@@ -8,8 +8,8 @@ def setup(cur_page, is_first_page=False):
     gsheet = None
     if 'gsheet' in st.session_state:
         gsheet = st.session_state['gsheet']
-    # elif cur_page.startswith('1'):
-    #     st.switch_page('1_get_url.py')
+    elif int(cur_page[0]) > 2 or cur_page[:2]=='2a':
+        st.switch_page('1_get_url.py')
 
     if st.session_state['is_sample'] and not is_first_page:
         st.info(f"Sample spreadsheet can be viewed [here]({st.secrets['SAMPLE_URL']})")
