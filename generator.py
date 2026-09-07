@@ -27,7 +27,7 @@ class CarGenerator:
         age_cats = [x for _, x in sorted(zip(gen_start_years, age_cats))]  # Sort by year
 
         # Reduce number of age categories
-        gen_labels, new_age_cats = combine_age_groups(self.df_roster[GENERATION_COL], age_cats, self.config)
+        gen_labels, new_age_cats = combine_age_groups(self.df_roster[GENERATION_COL], age_cats, self.config['NUM_AGE_GROUPS'])
     
         # Convert to index values
         
@@ -160,8 +160,7 @@ def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, se
     return df_out
 
 
-def combine_age_groups(gen_labels, age_cats, config):
-    ngroups = config['NUM_AGE_GROUPS']
+def combine_age_groups(gen_labels, age_cats, ngroups):
     if len(age_cats)<=ngroups:
         return gen_labels, age_cats
     

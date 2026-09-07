@@ -1,9 +1,9 @@
 import math
 import pytest
 
-import cp_cars_generator
+import generator
 
-DEFAULT_FULL_CAR_SIZE = cp_cars_generator.FULL_CAR_SIZE
+DEFAULT_FULL_CAR_SIZE = 4
 test_full_car_sizes = [4,5]
 
 
@@ -31,9 +31,9 @@ def get_car_sizes_brute_force(num_vols0, must_be_in_same_car, separate_car, full
 
 @pytest.fixture(params=test_full_car_sizes)
 def full_car_size(request):
-    cp_cars_generator.FULL_CAR_SIZE = request.param
-    yield cp_cars_generator.FULL_CAR_SIZE
-    cp_cars_generator.FULL_CAR_SIZE = DEFAULT_FULL_CAR_SIZE
+    generator.FULL_CAR_SIZE = request.param
+    yield generator.FULL_CAR_SIZE
+    generator.FULL_CAR_SIZE = DEFAULT_FULL_CAR_SIZE
 
 
 @pytest.mark.parametrize('num_vols', range(max(test_full_car_sizes)**2))
@@ -41,7 +41,7 @@ def test_basic(num_vols, full_car_size):
     must_be_in_same_car = []
     separate_car = []
     truth = get_car_sizes_brute_force(num_vols, must_be_in_same_car, separate_car, full_car_size)
-    carsizes = cp_cars_generator.get_car_sizes(num_vols, must_be_in_same_car, separate_car)
+    carsizes = generator.get_car_sizes(num_vols, must_be_in_same_car, separate_car, full_car_size)
     assert sorted(carsizes) == sorted(truth)
 
 @pytest.mark.parametrize('num_paired', range(1, DEFAULT_FULL_CAR_SIZE))
@@ -50,7 +50,7 @@ def test_small_pairing(num_paired):
     must_be_in_same_car = [range(num_paired)]
     separate_car = [False for _ in range(num_paired)]
     truth = get_car_sizes_brute_force(num_vols, must_be_in_same_car, separate_car, DEFAULT_FULL_CAR_SIZE)
-    carsizes = cp_cars_generator.get_car_sizes(num_vols, must_be_in_same_car, separate_car)
+    carsizes = generator.get_car_sizes(num_vols, must_be_in_same_car, separate_car, DEFAULT_FULL_CAR_SIZE)
     assert sorted(carsizes) == sorted(truth)
 
 
@@ -60,7 +60,7 @@ def test_large_pairing(num_paired):
     must_be_in_same_car = [range(num_paired)]
     separate_car = [False for _ in range(num_paired)]
     truth = get_car_sizes_brute_force(num_vols, must_be_in_same_car, separate_car, DEFAULT_FULL_CAR_SIZE)
-    carsizes = cp_cars_generator.get_car_sizes(num_vols, must_be_in_same_car, separate_car)
+    carsizes = generator.get_car_sizes(num_vols, must_be_in_same_car, separate_car, DEFAULT_FULL_CAR_SIZE)
     assert sorted(carsizes) == sorted(truth)
 
 
@@ -69,5 +69,5 @@ def test_separate_car():
     must_be_in_same_car = [range(5), range(5,10), range(10,12)]
     separate_car = [False, True, True]
     truth = get_car_sizes_brute_force(num_vols, must_be_in_same_car, separate_car, DEFAULT_FULL_CAR_SIZE)
-    carsizes = cp_cars_generator.get_car_sizes(num_vols, must_be_in_same_car, separate_car)
+    carsizes = generator.get_car_sizes(num_vols, must_be_in_same_car, separate_car, DEFAULT_FULL_CAR_SIZE)
     assert sorted(carsizes) == sorted(truth)

@@ -1,10 +1,12 @@
 import pandas as pd
 import pytest
 
-from cp_cars_generator import get_pairs, NAME1_COL, NAME2_COL, PAIR_COL, SEPARATE_COL, MARK
+from generator import get_pairs
+from columns import NAME1_COL, NAME2_COL, PAIR_COL, SEPARATE_COL
+from constants import MARK
 
 def test_pair():
-    d = {NAME1_COL: ['A'], NAME2_COL: ['B'], PAIR_COL:['yes'], SEPARATE_COL:['']}
+    d = {NAME1_COL: ['A'], NAME2_COL: ['B'], PAIR_COL:[True], SEPARATE_COL:[False]}
     df = pd.DataFrame(data=d)
 
     must_pair, separate_car, do_not_pair = get_pairs(df)
@@ -13,7 +15,7 @@ def test_pair():
     assert do_not_pair==[]
 
 def test_do_not_pair():
-    d = {NAME1_COL: ['A'], NAME2_COL: ['B'], PAIR_COL:['no'], SEPARATE_COL:['']}
+    d = {NAME1_COL: ['A'], NAME2_COL: ['B'], PAIR_COL:[False], SEPARATE_COL:[False]}
     df = pd.DataFrame(data=d)
 
     must_pair, separate_car, do_not_pair = get_pairs(df)
@@ -22,7 +24,7 @@ def test_do_not_pair():
     assert separate_car==[]
 
 def test_complex_pair():
-    d = {NAME1_COL: ['A','C','E','B'], NAME2_COL: ['B','D','F','E'], PAIR_COL:['yes','yes','yes','yes'], SEPARATE_COL:['','','','']}
+    d = {NAME1_COL: ['A','C','E','B'], NAME2_COL: ['B','D','F','E'], PAIR_COL:[True,True,True,True], SEPARATE_COL:[False,False,False,False]}
     df = pd.DataFrame(data=d)
 
     must_pair, separate_car, do_not_pair = get_pairs(df)
@@ -31,8 +33,8 @@ def test_complex_pair():
     assert do_not_pair==[]
 
 def test_mixed():
-    d = {NAME1_COL: ['A','C','E','B','G','I','G'], NAME2_COL: ['B','D','F','E','H','J','J'], PAIR_COL:['yes','yes','yes','yes','no','no','no'],
-         SEPARATE_COL:['','','','','','','']}
+    d = {NAME1_COL: ['A','C','E','B','G','I','G'], NAME2_COL: ['B','D','F','E','H','J','J'], PAIR_COL:[True,True,True,True,False,False,False],
+         SEPARATE_COL:[False,False,False,False,False,False,False]}
     df = pd.DataFrame(data=d)
 
     must_pair, separate_car, do_not_pair = get_pairs(df)
@@ -41,16 +43,15 @@ def test_mixed():
     assert do_not_pair==[set(['G','H','I','J'])]
 
 def test_conflict():
-    d = {NAME1_COL: ['A','A'], NAME2_COL: ['B','B'], PAIR_COL:['yes','no'], SEPARATE_COL:['','']}
+    d = {NAME1_COL: ['A','A'], NAME2_COL: ['B','B'], PAIR_COL:[True,False], SEPARATE_COL:[False,False]}
     df = pd.DataFrame(data=d)
 
     with pytest.raises(AssertionError):
         get_pairs(df)
 
 
-@pytest.mark.parametrize('mark', [MARK, MARK.lower()])
-def test_separate_car_pair(mark):
-    d = {NAME1_COL: ['A'], NAME2_COL: ['B'], PAIR_COL:['yes'], SEPARATE_COL:[mark]}
+def test_separate_car_pair():
+    d = {NAME1_COL: ['A'], NAME2_COL: ['B'], PAIR_COL:[True], SEPARATE_COL:[True]}
     df = pd.DataFrame(data=d)
 
     must_pair, separate_car, do_not_pair = get_pairs(df)
@@ -59,9 +60,8 @@ def test_separate_car_pair(mark):
     assert do_not_pair==[]
 
 
-@pytest.mark.parametrize('mark', [MARK, MARK.lower()])
-def test_separate_car_do_not_pair(mark):
-    d = {NAME1_COL: ['A'], NAME2_COL: ['B'], PAIR_COL:['no'], SEPARATE_COL:[mark]}
+def test_separate_car_do_not_pair():
+    d = {NAME1_COL: ['A'], NAME2_COL: ['B'], PAIR_COL:[False], SEPARATE_COL:[True]}
     df = pd.DataFrame(data=d)
 
     must_pair, separate_car, do_not_pair = get_pairs(df)
@@ -72,9 +72,9 @@ def test_separate_car_do_not_pair(mark):
 
 @pytest.mark.parametrize('loc', [0, 2, 3])
 def test_separate_car_complex_pair(loc):
-    separate = ['','','','']
-    separate[loc] = MARK
-    d = {NAME1_COL: ['A','C','E','B'], NAME2_COL: ['B','D','F','E'], PAIR_COL:['yes','yes','yes','yes'], SEPARATE_COL:separate}
+    separate = [False,False,False,False]
+    separate[loc] = True
+    d = {NAME1_COL: ['A','C','E','B'], NAME2_COL: ['B','D','F','E'], PAIR_COL:[True,True,True,True], SEPARATE_COL:separate}
     df = pd.DataFrame(data=d)
 
     must_pair, separate_car, do_not_pair = get_pairs(df)

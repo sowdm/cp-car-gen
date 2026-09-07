@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from cp_cars_generator import combine_experience_groups
+from generator import combine_experience_groups
 
 EXPERIENCE_CATS = ['None', 'I have done it once or twice without CP', 
                    'I have a lot, but not with CP','I have done it once or twice with CP',

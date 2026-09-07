@@ -1,6 +1,7 @@
 import pytest
 
-from cp_cars_generator import set_day, CAR_GROUP_WORKSHEET
+from cp_gsheet import set_day
+from worksheets import CAR_GROUP_WORKSHEET
 
 NDAYS = 4
 
