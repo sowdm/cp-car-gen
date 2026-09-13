@@ -35,7 +35,8 @@ else:
     FULL_CAR_SIZE = st.session_state['cargen'].FULL_CAR_SIZE
 
     df_drivers = cp_gsheet.get_sheet(gsheet['file'], DRIVER_WORKSHEET, clean=True, 
-                                     str_cols=[NAME_COL, DRIVER_TYPE_COL])
+                                     str_cols=[DRIVER_TYPE_COL],
+                                     name_cols=[NAME_COL])
     df_drivers = df_drivers[df_drivers[NAME_COL].isin(df_roster[NAME_COL])]
 
     day_col = [x for x in df_drivers.columns if x.startswith(f'Day {st.session_state['day']}')][0]

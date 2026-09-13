@@ -13,7 +13,8 @@ gsheet = base_page.setup(__file__)
 
 with st.spinner():
     df_roster = cp_gsheet.get_sheet(gsheet['file'], ROSTER_WORKSHEET, clean=True, 
-                                    str_cols=[NAME_COL, columns.HALF_DAY_COL, columns.GENERATION_COL, columns.EXPERIENCE_COL, columns.AFFILIATION_COL])
+                                    str_cols=[columns.HALF_DAY_COL, columns.GENERATION_COL, columns.EXPERIENCE_COL, columns.AFFILIATION_COL],
+                                    name_cols=[NAME_COL])
 
 no_name = df_roster[NAME_COL].apply(lambda x: len(x.strip())==0)
 no_name = no_name[no_name]

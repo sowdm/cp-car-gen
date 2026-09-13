@@ -10,7 +10,7 @@ import utils
 from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, SHEET_INDICATOR, DRIVER_WORKSHEET
 
 
-def get_sheet(sht, name, clean=False, str_cols=[]):
+def get_sheet(sht, name, clean=False, str_cols=[], name_cols=[]):
     worksheet = sht.worksheet(name)
     records = worksheet.get_all_records()
     if len(records)>0:
@@ -20,7 +20,7 @@ def get_sheet(sht, name, clean=False, str_cols=[]):
         df = pd.DataFrame(columns=cols)
 
     if clean:
-        df = utils.clean_df(df, str_cols=str_cols)
+        df = utils.clean_df(df, str_cols=str_cols, name_cols=name_cols)
 
     return df
 
