@@ -62,7 +62,7 @@ def get_spreadsheet(client: gspread.client.Client, url: str):
 
     return {'url':url, 'file':sht, 'worksheets':worksheet_list, 'has_cp_export':has_cp_export, 'is_init':is_init,
             'dates':dts,'date_has_car_group':date_has_car_group, 'car_group_date_error':error,
-            'is_complete':is_complete}
+            'is_complete':is_complete, 'df_roster_raw':df}
 
 
 def update_sheet(sht, name, df, worksheet_list, color=None, index=None):
@@ -87,7 +87,7 @@ def init(gsheet):
 
     assert FULL_ROSTER_WORKSHEET in worksheet_list, f'Worksheet entitled {FULL_ROSTER_WORKSHEET} must exist in spreadsheet and contained roster export from app'
 
-    df_full_roster = get_sheet(sht, FULL_ROSTER_WORKSHEET)
+    df_full_roster = gsheet['df_roster_raw']
     missing_cols = [x for x in ORIG_COLS if x not in df_full_roster]
     assert len(missing_cols)==0, f'Expected columns are missing from {FULL_ROSTER_WORKSHEET}: {missing_cols}'
 
@@ -110,14 +110,21 @@ def init(gsheet):
 
     df_roster = df_roster.drop(columns=DELETE_COLS)
 
+    avail_cols = [x+' Available' for x in day_cols]
     drivers = {NAME_COL:[], DRIVER_TYPE_COL:[]}
+    for k in avail_cols:
+        drivers[k] = []
     for k in df_roster.index:
         if df_roster.loc[k, 'Driver'].lower()=='yes':
             drivers[NAME_COL].append(df_roster.loc[k, NAME_COL])
             drivers[DRIVER_TYPE_COL].append(constants.PREFERRED_DRIVER)
+            for c, d in zip(avail_cols, day_cols):
+                drivers[c].append(df_roster.loc[k, d])
         elif df_roster.loc[k, 'Backup Driver'].lower()=='yes':
             drivers[NAME_COL].append(df_roster.loc[k, NAME_COL])
             drivers[DRIVER_TYPE_COL].append(constants.BACKUP_DRIVER)
+            for c, d in zip(avail_cols, day_cols):
+                drivers[c].append(df_roster.loc[k, d])
     df_drivers = pd.DataFrame(drivers)
     for c in day_cols:
         df_drivers[c] = ''

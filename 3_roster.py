@@ -18,8 +18,10 @@ with st.spinner():
 
 no_name = df_roster[NAME_COL].apply(lambda x: len(x.strip())==0)
 no_name = no_name[no_name]
-for k in range(len(no_name)):
-    df_roster.loc[no_name[k].index, NAME_COL] = f'UNNAMED {k}'
+for k in no_name.index:
+    df_roster.loc[k, NAME_COL] = f'UNNAMED {k}'
+
+st.session_state['df_roster_full'] = df_roster
 
 day_cols = [x for x in df_roster.columns if re.search(r'^Day\s\d+\s', x)]
 
@@ -34,13 +36,16 @@ day_col = [x for x in df_roster.columns if x.startswith(f'Day {st.session_state[
 df_roster = df_roster[df_roster[day_col]].reset_index(drop=True)
 st.session_state['df_roster'] = df_roster
 
-col0, col1, col2 = st.columns(3)
+col0, col1, col2, col3 = st.columns(4)
 if col0.button('Previous'):
     st.switch_page('1_get_url.py' if st.session_state['is_sample'] else '2_select_my_own_url.py')
 
 col1.button('Reload Spreadsheet', help=f'Reload "{ROSTER_WORKSHEET}" tab from Google sheet (for example if changes were made)')
 
-if col2.button('Accept Roster'):
+if col2.button('Learn About My Trip'):
+    st.switch_page('3a_trip_stats.py')
+
+if col3.button('Accept Roster'):
     st.session_state['df_pairings'] = None
     st.switch_page('4_pairings.py')
 

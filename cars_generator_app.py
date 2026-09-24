@@ -26,7 +26,7 @@ if 'client' not in st.session_state:
         st.session_state['config'] = tomllib.load(f)
 
 pg = st.navigation([st.Page("1_get_url.py"), st.Page("2_select_my_own_url.py"), st.Page('2a_car_group_error.py'),
-                    st.Page('3_roster.py'),
+                    st.Page('3_roster.py'), st.Page('3a_trip_stats.py'),
                     st.Page("4_pairings.py"), st.Page('5_drivers.py'), st.Page('6_cargen.py'), 
                     st.Page('7_success.py')], position='hidden')
 
