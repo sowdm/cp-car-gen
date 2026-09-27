@@ -1,4 +1,5 @@
 import copy
+from itertools import product
 import math
 import numpy as np
 import pandas as pd
@@ -295,6 +296,7 @@ def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0
 
         fail = add_drivers_to_cars(car_group, potential_drivers, must_be_in_same_car, avail_groups, avail, vols)
         if fail:
+            fail_msg = 'Failed to add drivers'
             continue
 
         max_experience = experience.max()
@@ -305,14 +307,16 @@ def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0
             # Find cars with enough space
             avail_cars = [x for x in car_group if (x==EMPTY).sum()>=len(g)]
             if len(avail_cars)==0:
+                fail_msg = 'No available cars for groups'
                 fail = True
                 break
             random.shuffle(avail_cars)
-            for car in avail_cars:
+            # First try to pair with max experience and then reduce experience as needed
+            for cur_max_exp, car in product(range(max_experience,0,-1), avail_cars):
                 # Ensure that driver can be paired with all members of group
                 can_pair = len([d for d in do_not_pair if car[0] in d and any(x in d for x in g)])==0
                 # Ensure that there is someone with max experience in group
-                has_experience = experience.loc[car[0]]==max_experience or (experience.loc[g]==max_experience).any()
+                has_experience = experience.loc[car[0]]==cur_max_exp or (experience.loc[g]==cur_max_exp).any()
                 if can_pair and has_experience:
                     car[np.where(car==EMPTY)[0][:len(g)]] = g
                     break
@@ -327,25 +331,28 @@ def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0
         rem = [x for x,y in zip(vols, avail) if y and not any(x in g for g in rem_groups)]
         random.shuffle(rem)
 
-        exp_vols = experience.loc[rem]==max_experience
-        exp_vols = exp_vols[exp_vols].index
-
-        # Ensure that there is an experienced volunteer in all groups
         used = []
-        for car in car_group:
-            if (car==EMPTY).any() and not (experience.loc[car[car!=EMPTY]]==max_experience).any():
-                # Car has space and none of current volunteers are most experienced
-                for v in [x for x in exp_vols if x not in used]:
-                    if len([d for d in do_not_pair if v in d and any(x in d for x in car)])==0:
-                        car[np.where(car==EMPTY)[0][0]] = v
-                        used.append(v)
+        for cur_max_exp in range(max_experience,0,-1):
+            exp_vols = experience.loc[rem]>=cur_max_exp
+            exp_vols = exp_vols[exp_vols].index
+
+            # Ensure that there is an experienced volunteer in all groups
+            fail = False
+            for car in car_group:
+                if (car==EMPTY).any() and not (experience.loc[car[car!=EMPTY]]>=cur_max_exp).any():
+                    # Car has space and none of current volunteers are most experienced
+                    for v in [x for x in exp_vols if x not in used]:
+                        if len([d for d in do_not_pair if v in d and any(x in d for x in car)])==0:
+                            car[np.where(car==EMPTY)[0][0]] = v
+                            used.append(v)
+                            break
+                    else:
+                        fail_msg = 'Unable to find experienced volunteer for car'
+                        fail = True
                         break
-                else:
-                    fail = True
-                    break
 
         if fail:
-            continue      
+            continue    
 
         remove = [x for x in exp_vols if x in used]
         rem = [x for x in rem if x not in remove]
@@ -359,6 +366,7 @@ def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0
                             used.append(v)
                             break
                     else:
+                        fail_msg = f'Unable to find car for volunteer {v}'
                         fail = True
 
         if fail:
@@ -368,7 +376,7 @@ def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0
 
         return car_group
     else:
-        raise ValueError('Failed to generate car group due to constraints on car pairings and drivers')
+        raise ValueError(f'Failed to generate car group due to constraints on car pairings and drivers: {fail_msg}')
 
 
 def get_drivers(ncars, names, types, user_requests, subset=None, must_be_in_same_car=[]):
