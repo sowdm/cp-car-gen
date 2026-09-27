@@ -151,14 +151,14 @@ def init(gsheet):
     for k in no_name.index:
         df_roster.loc[k, NAME_COL] = f'UNNAMED {k}'
 
-    df = pd.DataFrame(columns=['Volunteers','Capacity (Drivers x 4)','Not Enough Drivers Warning! (if checked)', 'Drivers', 
+    df = pd.DataFrame(columns=['Volunteers','Capacity (Drivers x 4)','Not Enough Drivers Warning!', 'Drivers', 
                             'Backup Drivers', 'BIPOC Status'], index=day_cols)
     df['Volunteers'] = df_roster[day_cols].sum()
 
     for c in day_cols:
         df.loc[c, 'Drivers'] = df_roster['Driver'][df_roster[c]].sum()
         df.loc[c, 'Capacity (Drivers x 4)'] = df.loc[c, 'Drivers'] * 4
-        df.loc[c, 'Not Enough Drivers Warning! (if checked)'] = df.loc[c, 'Capacity (Drivers x 4)'] < df.loc[c, 'Volunteers']
+        df.loc[c, 'Not Enough Drivers Warning!'] = df.loc[c, 'Capacity (Drivers x 4)'] < df.loc[c, 'Volunteers']
         df.loc[c, 'Backup Drivers'] = df_roster['Backup Driver'][df_roster[c]].sum()
         df.loc[c, 'BIPOC Status'] = df_roster['BIPOC Status'][df_roster[c]].sum()
 

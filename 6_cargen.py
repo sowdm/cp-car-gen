@@ -20,7 +20,7 @@ if not isinstance(st.session_state['df_car_groups'], pd.DataFrame):
     pbar.empty()
 
 st.subheader('Generated Car Groups')
-st.dataframe(st.session_state['df_car_groups'], width='content')
+st.dataframe(st.session_state['df_car_groups'], width='content', hide_index=True)
 
 if col0.button('Previous'):
     st.switch_page('5_drivers.py')

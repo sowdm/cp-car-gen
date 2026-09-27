@@ -39,7 +39,7 @@ else:
                                      name_cols=[NAME_COL])
     df_drivers = df_drivers[df_drivers[NAME_COL].isin(df_roster[NAME_COL])]
 
-    day_col = [x for x in df_drivers.columns if x.startswith(f'Day {st.session_state['day']}')][0]
+    day_col = [x for x in df_drivers.columns if x.startswith(f'Day {st.session_state['day']}') and not 'Available' in x][0]
     names = df_drivers[NAME_COL].tolist()
     types = df_drivers[DRIVER_TYPE_COL].tolist()
     user_requests = df_drivers[day_col].tolist()
