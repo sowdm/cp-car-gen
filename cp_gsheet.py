@@ -4,10 +4,11 @@ import re
 import numpy as np
 import pandas as pd
 
+import columns
 from columns import DATES_COL, DELETE_COLS, ORIG_COLS, RENAME_COLS, NAME_COL, DRIVER_TYPE_COL
 import constants
 import utils
-from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, SHEET_INDICATOR, DRIVER_WORKSHEET
+from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, SHEET_INDICATOR, DRIVER_WORKSHEET, TRIP_STATS_WORKSHEET
 
 
 def get_sheet(sht, name, clean=False, str_cols=[], name_cols=[]):
@@ -29,7 +30,7 @@ def get_spreadsheet(client: gspread.client.Client, url: str):
     sht = client.open_by_url(url)
     worksheet_list = [x.title for x in sht.worksheets() if x.title.startswith(SHEET_INDICATOR)]
     has_cp_export = FULL_ROSTER_WORKSHEET in worksheet_list
-    is_init = ROSTER_WORKSHEET in worksheet_list and DRIVER_WORKSHEET in worksheet_list
+    is_init = ROSTER_WORKSHEET in worksheet_list and DRIVER_WORKSHEET in worksheet_list and TRIP_STATS_WORKSHEET in worksheet_list
 
     dts = None
     date_has_car_group = None
@@ -65,15 +66,23 @@ def get_spreadsheet(client: gspread.client.Client, url: str):
             'is_complete':is_complete, 'df_roster_raw':df}
 
 
-def update_sheet(sht, name, df, worksheet_list, color=None, index=None):
+def update_sheet(sht, name, df, worksheet_list, color=None, index=None, row=1, clear=True):
     if name in worksheet_list:
         worksheet = sht.worksheet(name)
-        worksheet.clear()
+        if clear:
+            worksheet.clear()
     else:
         worksheet = sht.add_worksheet(name, rows=0, cols=0, index=index)
 
+    df = df.apply(lambda x: x.apply(lambda y: 'X' if isinstance(y, (bool, np.bool)) and y else y))  
+    df = df.apply(lambda x: x.apply(lambda y: '' if isinstance(y, (bool, np.bool)) and not y else y))  
+    df = df.fillna(0)
+
     data = [[int(x) if isinstance(x, np.int64) else x for x in y] for y in df.values.tolist()]
-    worksheet.update([df.columns.values.tolist()] + data)
+    # nrows = len(df)
+    # ncols = len(df.columns)
+    my_range = f'A{row}'  #:{chr(64+ncols)}{row+nrows}'
+    worksheet.update(range_name=my_range, values=[df.columns.values.tolist()] + data)
 
     if color:
         worksheet.update_tab_color(color)
@@ -132,6 +141,59 @@ def init(gsheet):
     update_sheet(sht, ROSTER_WORKSHEET, df_roster, worksheet_list)
     update_sheet(sht, DRIVER_WORKSHEET, df_drivers, worksheet_list)
 
+    df_roster = get_sheet(gsheet['file'], ROSTER_WORKSHEET, clean=True, 
+                    str_cols=[columns.HALF_DAY_COL, columns.GENERATION_COL, columns.EXPERIENCE_COL, columns.AFFILIATION_COL,
+                                'MiniVan Experience', 'Dietary Restrictions'],
+                    name_cols=[NAME_COL])
+    
+    no_name = df_roster[NAME_COL].apply(lambda x: len(x.strip())==0)
+    no_name = no_name[no_name]
+    for k in no_name.index:
+        df_roster.loc[k, NAME_COL] = f'UNNAMED {k}'
+
+    df = pd.DataFrame(columns=['Volunteers','Capacity (Drivers x 4)','Not Enough Drivers Warning! (if checked)', 'Drivers', 
+                            'Backup Drivers', 'BIPOC Status'], index=day_cols)
+    df['Volunteers'] = df_roster[day_cols].sum()
+
+    for c in day_cols:
+        df.loc[c, 'Drivers'] = df_roster['Driver'][df_roster[c]].sum()
+        df.loc[c, 'Capacity (Drivers x 4)'] = df.loc[c, 'Drivers'] * 4
+        df.loc[c, 'Not Enough Drivers Warning! (if checked)'] = df.loc[c, 'Capacity (Drivers x 4)'] < df.loc[c, 'Volunteers']
+        df.loc[c, 'Backup Drivers'] = df_roster['Backup Driver'][df_roster[c]].sum()
+        df.loc[c, 'BIPOC Status'] = df_roster['BIPOC Status'][df_roster[c]].sum()
+
+    update_sheet(sht, TRIP_STATS_WORKSHEET, df.reset_index(names=''), worksheet_list)
+    nrows = len(df)+3
+    worksheet_list.append(TRIP_STATS_WORKSHEET)
+
+    generations = df_roster['Generation'].unique()
+    df = pd.DataFrame(columns=generations, index=day_cols)
+
+    for c in day_cols:
+        df.loc[c, : ] = df_roster[df_roster[c]]['Generation'].value_counts()
+
+    update_sheet(sht, TRIP_STATS_WORKSHEET, df.reset_index(names=''), worksheet_list, row=nrows, clear=False)
+    nrows += len(df)+2
+
+    exp = df_roster['Canvassing Experience'].unique()
+    df = pd.DataFrame(columns=exp, index=day_cols)
+
+    for c in day_cols:
+        df.loc[c, : ] = df_roster[df_roster[c]]['Canvassing Experience'].value_counts()
+
+    update_sheet(sht, TRIP_STATS_WORKSHEET, df.reset_index(names=''), worksheet_list, row=nrows, clear=False)
+    nrows += len(df)+2
+
+    diets = df_roster['Dietary Restrictions'].unique()
+    df = pd.DataFrame(columns=diets, index=day_cols)
+
+    for c in day_cols:
+        df.loc[c, : ] = df_roster[df_roster[c]]['Dietary Restrictions'].value_counts()
+
+    df = df.drop(columns=['','No','None'], errors=False)
+
+    update_sheet(sht, TRIP_STATS_WORKSHEET, df.reset_index(names=''), worksheet_list, row=nrows, clear=False)
+
 
 def set_day(mode, worksheet_list, ndays):
     group_created = pd.Series([CAR_GROUP_WORKSHEET.format(k+1) in worksheet_list for k in range(ndays)])
@@ -165,7 +227,10 @@ def load_url(client, url):
         try:
             init(gsheet)
             gsheet = get_spreadsheet(client, url)
-        except gspread.exceptions.APIError:
+        except gspread.exceptions.APIError as e:
+            if len(e.args)>0 and 'message' in e.args[0] and 'A sheet with the name' in e.args[0]['message'] and \
+                 'already exists' in e.args[0]['message']:
+                raise e
             errmsg = 'The entered URL is not shared with Editor access. Please follow the instructions below for setting up your Google spreadsheet. ' \
                 'If you have set access properly, try loading the spreadsheet again.'
 

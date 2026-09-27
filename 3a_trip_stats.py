@@ -26,7 +26,7 @@ for c in day_cols:
 
 
 st.subheader('Volunteers and Drivers')
-st.dataframe(df)
+st.dataframe(df.fillna(0))
 
 generations = df_roster['Generation'].unique()
 df = pd.DataFrame(columns=generations, index=day_cols)
@@ -35,16 +35,27 @@ for c in day_cols:
     df.loc[c, : ] = df_roster[df_roster[c]]['Generation'].value_counts()
 
 st.subheader('Generation')
-st.dataframe(df)
+st.dataframe(df.fillna(0))
 
-generations = df_roster['Canvassing Experience'].unique()
-df = pd.DataFrame(columns=generations, index=day_cols)
+exp = df_roster['Canvassing Experience'].unique()
+df = pd.DataFrame(columns=exp, index=day_cols)
 
 for c in day_cols:
     df.loc[c, : ] = df_roster[df_roster[c]]['Canvassing Experience'].value_counts()
 
 st.subheader('Canvassing Experience')
-st.dataframe(df)
+st.dataframe(df.fillna(0))
 
 st.subheader('Half Day Status')
 st.dataframe(df_roster[df_roster['Half Day Status'].apply(lambda x: len(x)>0)][['Name','Half Day Status']].reset_index(drop=True))
+
+diets = df_roster['Dietary Restrictions'].unique()
+df = pd.DataFrame(columns=diets, index=day_cols)
+
+for c in day_cols:
+    df.loc[c, : ] = df_roster[df_roster[c]]['Dietary Restrictions'].value_counts()
+
+df = df.drop(columns=['','No','None'], errors=False)
+
+st.subheader('Dietary Restrictions')
+st.dataframe(df.fillna(0))
