@@ -43,10 +43,10 @@ class CarGenerator:
         self.must_be_in_same_car = [[y for y in x if (self.df_roster['Name']==y).any()] for x in self.must_be_in_same_car]
         self.do_not_pair = [[y for y in x if (self.df_roster['Name']==y).any()] for x in self.do_not_pair]
     
-        # Get rid of groups that no longer have more than 1 person
+        # Get rid of groups that no longer have more than 1 person and aren't a single person in a separate car
         lens = [len(x) for x in self.must_be_in_same_car]
-        self.must_be_in_same_car = [x for x,y in zip(self.must_be_in_same_car, lens) if y>1]
-        self.separate_car = [x for x,y in zip(self.separate_car, lens) if y>1]
+        self.must_be_in_same_car = [x for x,y,z in zip(self.must_be_in_same_car, lens, self.separate_car) if y>1 or (y>0 and z)]
+        self.separate_car = [x for x,y in zip(self.separate_car, lens) if y>1 or (y>0 and x)]
         self.do_not_pair = [x for x in self.do_not_pair if len(x)>1]
     
         # Sort in descending order of group size
@@ -223,6 +223,21 @@ def get_pairs(df_pairings):
     do_not_pair = []
     for k in df_pairings.index:
         is_pair = df_pairings.loc[k, PAIR_COL]
+        # Deal with single 
+        if pd.isnull(df_pairings.loc[k, NAME1_COL]) and pd.isnull(df_pairings.loc[k, NAME2_COL]):
+            # No one to pair
+            continue
+        elif pd.isnull(df_pairings.loc[k, NAME1_COL]) or pd.isnull(df_pairings.loc[k, NAME2_COL]):
+            if not is_pair or not df_pairings.loc[k, SEPARATE_COL]:
+                # Single pair without separate car does not do anything
+                continue
+
+            # This person should be in their own car
+            if pd.isnull(df_pairings.loc[k, NAME1_COL]):
+                df_pairings.loc[k, NAME1_COL] = df_pairings.loc[k, NAME2_COL]
+            else:
+                df_pairings.loc[k, NAME2_COL] = df_pairings.loc[k, NAME1_COL]
+
         groups = must_pair if is_pair else do_not_pair
         is_separate = df_pairings.loc[k, SEPARATE_COL] if is_pair else False
         added = None

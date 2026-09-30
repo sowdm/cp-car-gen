@@ -11,6 +11,7 @@ st.subheader('Are there people you want to be in the same car? Or people you wan
 
 st.info('1. Create a new row by clicking the empty row in the table below\n' \
         '2. Add names of 2 volunteers who you want in the same car or different cars. For groups larger than 2, use multiple rows.\n' \
+            '(**TIP: To put a single person in their own car, leave the 2nd name blank.**) \n'
         '3. Indicate whether you want them in the same car or different cards\n' \
         f'4. If a group that will be in a separate car, indicate "Yes" in the "{SEPARATE_COL} column\n' \
         '5. Repeat as needed\n' \
@@ -35,7 +36,8 @@ separate_config = st.column_config.SelectboxColumn(options=['Yes','No'],
                                                    'without anyone else.', 
                                                    default='No')
 
-df = st.data_editor(df_pairings, num_rows='dynamic', 
+df_pairings.index = range(len(df_pairings))
+df = st.data_editor(df_pairings, num_rows='dynamic', hide_index=True,
                     column_config={NAME1_COL:name_config, NAME2_COL:name_config, PAIR_COL:pair_config, SEPARATE_COL:separate_config})
 
 disabled = (df[NAME1_COL] == df[NAME2_COL]).any()
