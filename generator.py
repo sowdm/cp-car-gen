@@ -50,7 +50,9 @@ class CarGenerator:
         self.do_not_pair = [x for x in self.do_not_pair if len(x)>1]
     
         # Sort in descending order of group size
-        self.must_be_in_same_car =  [x for _, x in sorted(zip([len(y) for y in self.must_be_in_same_car], self.must_be_in_same_car), reverse=True)]
+        sorted_list =  [(x,y) for _, x,y in sorted(zip([len(y) for y in self.must_be_in_same_car], self.must_be_in_same_car, self.separate_car), reverse=True)]
+        self.must_be_in_same_car = [x for x,_ in sorted_list]
+        self.separate_car = [y for _,y in sorted_list]
         self.do_not_pair =  [x for _, x in sorted(zip([len(y) for y in self.do_not_pair], self.do_not_pair), reverse=True)]
 
         num_vols = len(self.df_roster)
