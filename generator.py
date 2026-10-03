@@ -316,7 +316,10 @@ def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0
             fail_msg = 'Failed to add drivers'
             continue
 
-        max_experience = experience.max()
+        max_experience = int(experience.max())
+        all_max_exp = [x for x in range(max_experience,0,-1)]
+        if len(all_max_exp)==0:
+            all_max_exp = []
 
         rem_groups = [x for x,y in zip(must_be_in_same_car, avail_groups) if y]
         # Insert all groups
@@ -329,7 +332,7 @@ def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0
                 break
             random.shuffle(avail_cars)
             # First try to pair with max experience and then reduce experience as needed
-            for cur_max_exp, car in product(range(max_experience,0,-1), avail_cars):
+            for cur_max_exp, car in product(all_max_exp, avail_cars):
                 # Ensure that driver can be paired with all members of group
                 can_pair = len([d for d in do_not_pair if car[0] in d and any(x in d for x in g)])==0
                 # Ensure that there is someone with max experience in group
@@ -349,7 +352,7 @@ def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0
         random.shuffle(rem)
 
         used = []
-        for cur_max_exp in range(max_experience,0,-1):
+        for cur_max_exp in all_max_exp:
             exp_vols = experience.loc[rem]>=cur_max_exp
             exp_vols = exp_vols[exp_vols].index
 
