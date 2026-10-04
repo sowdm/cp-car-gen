@@ -319,7 +319,7 @@ def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0
         max_experience = int(experience.max())
         all_max_exp = [x for x in range(max_experience,0,-1)]
         if len(all_max_exp)==0:
-            all_max_exp = []
+            all_max_exp = [max_experience]
 
         rem_groups = [x for x,y in zip(must_be_in_same_car, avail_groups) if y]
         # Insert all groups
