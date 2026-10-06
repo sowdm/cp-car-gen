@@ -28,6 +28,7 @@ if right.button('Create Car Groups for This URL'):
         elif st.session_state['gsheet']['is_complete'] or st.session_state['gsheet']['car_group_date_error']:
             st.switch_page('2a_car_group_error.py')
         else:
+            st.session_state['load_roster'] = True
             st.switch_page('3_roster.py')
 
 st.subheader('How to Setup a Google Sheet to Generate Car Groups')
