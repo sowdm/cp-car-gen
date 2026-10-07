@@ -32,6 +32,7 @@ def get_spreadsheet(client: gspread.client.Client, url: str):
     has_cp_export = FULL_ROSTER_WORKSHEET in worksheet_list
     is_init = ROSTER_WORKSHEET in worksheet_list and DRIVER_WORKSHEET in worksheet_list and TRIP_STATS_WORKSHEET in worksheet_list
 
+    df = None
     dts = None
     date_has_car_group = None
     error = False
