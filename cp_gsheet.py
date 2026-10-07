@@ -152,8 +152,12 @@ def init(gsheet):
     num_unnamed = 0
     for k in no_name.index:
         num_unnamed+=1
-        df_roster.loc[k, NAME_COL] = f'UNNAMED {k}'
+        df_roster.loc[k, NAME_COL] = f'UNNAMED {num_unnamed}'
 
+    update_trip_stats(df_roster, day_cols, sht, worksheet_list)
+
+
+def update_trip_stats(df_roster, day_cols, sht, worksheet_list):
     df = pd.DataFrame(columns=['Volunteers','Capacity (Drivers x 4)','Not Enough Drivers Warning!', 'Drivers', 
                             'Backup Drivers', 'BIPOC Status'], index=day_cols)
     df['Volunteers'] = df_roster[day_cols].sum()
@@ -193,7 +197,7 @@ def init(gsheet):
     for c in day_cols:
         df.loc[c, : ] = df_roster[df_roster[c]]['Dietary Restrictions'].value_counts()
 
-    df = df.drop(columns=['','No','None'], errors=False)
+    df = df.drop(columns=['','No','None'], errors='ignore')
 
     update_sheet(sht, TRIP_STATS_WORKSHEET, df.reset_index(names=''), worksheet_list, row=nrows, clear=False)
 
@@ -224,14 +228,14 @@ def load_url(client, url):
         
     errmsg = None
     if not gsheet['has_cp_export']:
-        errmsg = f'Spreadsheet does not have sheet called "{FULL_ROSTER_WORKSHEET}" containing the roster' +\
+        errmsg = f'Spreadsheet does not have tab called "{FULL_ROSTER_WORKSHEET}" containing the roster' +\
                 ' from the app. Please follow the instructions below for setting up your Google spreadsheet.'
     elif not gsheet['is_init']:
         try:
             init(gsheet)
             gsheet = get_spreadsheet(client, url)
         except gspread.exceptions.APIError as e:
-            if len(e.args)>0 and 'message' in e.args[0] and 'A sheet with the name' in e.args[0]['message'] and \
+            if len(e.args)>0 and 'message' in e.args[0] and 'A tab with the name' in e.args[0]['message'] and \
                  'already exists' in e.args[0]['message']:
                 raise e
             errmsg = 'The entered URL is not shared with Editor access. Please follow the instructions below for setting up your Google spreadsheet. ' \
