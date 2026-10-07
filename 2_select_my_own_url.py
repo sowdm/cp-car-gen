@@ -36,12 +36,12 @@ st.subheader('How to Setup a Google Sheet to Generate Car Groups')
 st.markdown(
     'To generator car groups for your trip, you must:\n\n' \
     '1. Create a [Google Spreadsheet](https://sheets.google.com/). Name it whatever you like.\n' \
-    f'2. Create or rename a sheet to be called "**{FULL_ROSTER_WORKSHEET}**" (including the !). '\
-        'See bar at bottom. Press + to add sheet or double click on sheet to rename.\n'
+    f'2. Create or rename a tab (e.g. rename default tab from Sheet1) to be called "**{FULL_ROSTER_WORKSHEET}**" (including the !). '\
+        'See bar at bottom. Press + to add tab or double click on tab to rename.\n'
     '3. Go to your trip on the Common Power app.\n' \
     '4. Click "Export Trip Data to CSV"\n' \
     '5. Open the downloaded CSV.\n' \
-    f'6. Copy the table and paste into your sheet named "**{FULL_ROSTER_WORKSHEET}** in your Google spreadsheet"\n'
+    f'6. Copy the table and paste into your tab named "**{FULL_ROSTER_WORKSHEET}** in your Google spreadsheet"\n'
     '7. In your Google spreadsheet, click the Share button in the upper right\n'
     "8. Enter this app's email **car-creator@common-power.iam.gserviceaccount.com** where it says 'Add People'. "
         "(NOTE: do not email the app. No one will receive it.)\n"

@@ -54,16 +54,16 @@ else:
             if len(group_drivers)==0:
                 if s:
                     st.error(f'No drivers found in paired group {m} that much be in a separate car. Press Previous to update pairings '+
-                             f'or update the {DRIVER_WORKSHEET} tab of the Google sheet and press Reload.')
+                             f'or update the {DRIVER_WORKSHEET} tab of the Google spreadsheet and press Reload.')
                 else:
                     st.error(f'No drivers found in paired group {m} who must be in a separate car due to size. Press Previous to update pairings '+
-                            f'or update the {DRIVER_WORKSHEET} tab of the Google sheet and press Reload.')
+                            f'or update the {DRIVER_WORKSHEET} tab of the Google spreadsheet and press Reload.')
 
                 col1, col2 = st.columns(2)
                 if col1.button('Previous'):
                     st.switch_page('4_pairings.py')
                 col2.button('Reload Spreadsheet', on_click=reload, 
-                    help=f'Reload "{DRIVER_WORKSHEET}" tab from Google sheet (for example if changes were made)')
+                    help=f'Reload "{DRIVER_WORKSHEET}" tab from Google spreadsheet (for example if changes were made)')
                 st.stop()
 
             d = get_drivers(1, names, types, user_requests, subset=group_drivers)
@@ -117,7 +117,7 @@ if col0.button('Previous'):
     st.switch_page('4_pairings.py')
 
 col1.button('Reload Spreadsheet', on_click=reload, 
-            help=f'Reload "{DRIVER_WORKSHEET}" tab from Google sheet (for example if changes were made)')
+            help=f'Reload "{DRIVER_WORKSHEET}" tab from Google spreadsheet (for example if changes were made)')
 
 if col2.button('Accept Drivers', disabled=disabled):
     st.session_state['drivers'] = selected_drivers

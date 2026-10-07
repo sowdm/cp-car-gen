@@ -148,7 +148,9 @@ def init(gsheet):
     
     no_name = df_roster[NAME_COL].apply(lambda x: len(x.strip())==0)
     no_name = no_name[no_name]
+    num_unnamed = 0
     for k in no_name.index:
+        num_unnamed+=1
         df_roster.loc[k, NAME_COL] = f'UNNAMED {k}'
 
     df = pd.DataFrame(columns=['Volunteers','Capacity (Drivers x 4)','Not Enough Drivers Warning!', 'Drivers', 
