@@ -53,7 +53,6 @@ if col0.button('Previous'):
 if col1.button('Accept Pairings', disabled=disabled):
     # If new rows are added, they may contain a list of a string rather than just a string
     st.session_state['drivers'] = None
-    st.session_state['df_car_groups'] = None
     st.session_state['df_pairings'] = df.copy()
     st.session_state['ignore'] = list(ignore)
     df[PAIR_COL] = df[PAIR_COL] == SAME_CAR
