@@ -96,6 +96,7 @@ if col3.button('Accept Roster'):
     st.session_state['df_roster'] = st.session_state['df_roster'].reset_index(drop=True)
     
     # Update spreadsheet
+    st.session_state['ignore'] = []
     st.session_state['df_pairings'] = None
     st.switch_page('4_pairings.py')
 

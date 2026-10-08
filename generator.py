@@ -14,7 +14,10 @@ from columns import PAIR_COL, NAME1_COL, NAME2_COL, SEPARATE_COL, GENERATION_COL
 from constants import EMPTY
 
 class CarGenerator:
-    def __init__(self, df_roster, df_pairings, day, sht, config):
+    def __init__(self, df_roster, df_pairings, day, sht, ignore, config):
+
+        df_roster = df_roster.loc[~df_roster[columns.NAME_COL].isin(ignore)].reset_index(drop=True)
+
         self.FULL_CAR_SIZE = config['FULL_CAR_SIZE']
         self.df_roster = df_roster
         self.df_pairings = df_pairings

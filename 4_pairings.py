@@ -36,6 +36,9 @@ separate_config = st.column_config.SelectboxColumn(options=['Yes','No'],
                                                    'without anyone else.', 
                                                    default='No')
 
+default_ignore = [x for x in st.session_state['ignore'] if x in df_roster['Name'].tolist()]
+ignore = st.multiselect('Do not include in any car (e.g. staff who will be in their own cars)', df_roster['Name'], default=default_ignore)
+
 df_pairings.index = range(len(df_pairings))
 df = st.data_editor(df_pairings, num_rows='dynamic', hide_index=True,
                     column_config={NAME1_COL:name_config, NAME2_COL:name_config, PAIR_COL:pair_config, SEPARATE_COL:separate_config})
@@ -52,7 +55,8 @@ if col1.button('Accept Pairings', disabled=disabled):
     st.session_state['drivers'] = None
     st.session_state['df_car_groups'] = None
     st.session_state['df_pairings'] = df.copy()
+    st.session_state['ignore'] = list(ignore)
     df[PAIR_COL] = df[PAIR_COL] == SAME_CAR
     df[SEPARATE_COL] = df[SEPARATE_COL].str.lower() == 'yes'
-    st.session_state['cargen'] = CarGenerator(df_roster, df, st.session_state['day'], gsheet, st.session_state['config'])
+    st.session_state['cargen'] = CarGenerator(df_roster, df, st.session_state['day'], gsheet, st.session_state['ignore'], st.session_state['config'])
     st.switch_page('5_drivers.py')
