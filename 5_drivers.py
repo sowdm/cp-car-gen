@@ -34,10 +34,11 @@ else:
     df_roster = st.session_state['cargen'].df_roster
     FULL_CAR_SIZE = st.session_state['cargen'].FULL_CAR_SIZE
 
-    df_drivers = cp_gsheet.get_sheet(gsheet['file'], DRIVER_WORKSHEET, clean=True, 
+    st.session_state['df_drivers_all'] = cp_gsheet.get_sheet(gsheet['file'], DRIVER_WORKSHEET, clean=True, 
                                      str_cols=[DRIVER_TYPE_COL],
                                      name_cols=[NAME_COL])
-    df_drivers = df_drivers[df_drivers[NAME_COL].isin(df_roster[NAME_COL])]
+    df_drivers = st.session_state['df_drivers_all'][st.session_state['df_drivers_all'][NAME_COL].isin(df_roster[NAME_COL])]
+    df_drivers = df_drivers[~df_drivers[NAME_COL].isin(st.session_state['ignore'])]
 
     day_col = [x for x in df_drivers.columns if x.startswith(f'Day {st.session_state['day']}') and not 'Available' in x][0]
     names = df_drivers[NAME_COL].tolist()
@@ -54,16 +55,16 @@ else:
             if len(group_drivers)==0:
                 if s:
                     st.error(f'No drivers found in paired group {m} that much be in a separate car. Press Previous to update pairings '+
-                             f'or update the {DRIVER_WORKSHEET} tab of the Google sheet and press Reload.')
+                             f'or update the {DRIVER_WORKSHEET} tab of the Google spreadsheet and press Reload.')
                 else:
                     st.error(f'No drivers found in paired group {m} who must be in a separate car due to size. Press Previous to update pairings '+
-                            f'or update the {DRIVER_WORKSHEET} tab of the Google sheet and press Reload.')
+                            f'or update the {DRIVER_WORKSHEET} tab of the Google spreadsheet and press Reload.')
 
                 col1, col2 = st.columns(2)
                 if col1.button('Previous'):
                     st.switch_page('4_pairings.py')
                 col2.button('Reload Spreadsheet', on_click=reload, 
-                    help=f'Reload "{DRIVER_WORKSHEET}" tab from Google sheet (for example if changes were made)')
+                    help=f'Reload "{DRIVER_WORKSHEET}" tab from Google spreadsheet (for example if changes were made)')
                 st.stop()
 
             d = get_drivers(1, names, types, user_requests, subset=group_drivers)
@@ -89,15 +90,16 @@ if len(st.session_state['separate_car_drivers'])>0:
                f'the {DRIVER_WORKSHEET} tab of the Google Sheet: {st.session_state["separate_car_drivers"]}')
 
 original_items = [
-    {'header': 'Drivers',  'items': drivers},
-    {'header': 'NOT Drivers', 'items': not_drivers}
+    {'header': "Today's Drivers",  'items': drivers},
+    {'header': 'Available Drivers', 'items': not_drivers},
+    {'header': 'Permanently Remove from Driver Pool (i.e. does not have car)', 'items': []}
 ]
 
 st.markdown(f'Select drivers for {ncars} remaining cars by dragging between the Drivers and NOT Drivers lists')
 
 col0, col1, col2 = st.columns(3)
 
-selection = sort_items(original_items, multi_containers=True, direction='vertical')
+selection = sort_items(original_items, multi_containers=True, direction='horizontal')
 
 selected_drivers = selection[0]['items']
 ndrivers = len(selected_drivers)
@@ -117,13 +119,19 @@ if col0.button('Previous'):
     st.switch_page('4_pairings.py')
 
 col1.button('Reload Spreadsheet', on_click=reload, 
-            help=f'Reload "{DRIVER_WORKSHEET}" tab from Google sheet (for example if changes were made)')
+            help=f'Reload "{DRIVER_WORKSHEET}" tab from Google spreadsheet (for example if changes were made)')
 
 if col2.button('Accept Drivers', disabled=disabled):
+    perm_del_drivers = selection[2]['items']
+    if len(perm_del_drivers)>0:
+        st.session_state['df_drivers_all'] = st.session_state['df_drivers_all'][~st.session_state['df_drivers_all'][NAME_COL].isin(perm_del_drivers)]
+        cp_gsheet.update_sheet(gsheet['file'], DRIVER_WORKSHEET, st.session_state['df_drivers_all'], gsheet['worksheets'])
+
     st.session_state['drivers'] = selected_drivers
     st.session_state['not_drivers'] = selection[1]['items']
     selected_drivers.extend(st.session_state['separate_car_drivers'])
     st.session_state['cargen'].set_drivers(selected_drivers)
+    st.session_state['df_car_groups'] = None
     st.switch_page('6_cargen.py')
 
 st.subheader('Importable Driver Selections and Preferences')

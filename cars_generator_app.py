@@ -36,7 +36,7 @@ except gspread.exceptions.NoValidUrlKeyFound:
     st.error(f'ERROR: The entered URL does not appear to be a valid URL. If the URL is valid, please contact [admin](mailto:{constants.EMAIL}).')
 except PermissionError:
     st.error('ERROR: The entered URL has restricted access. This means only users who have explicitly been given access can use the spreadsheet.'+
-             'Please reload this page and follow the instructions for sharing the Google sheet.')
+             'Please reload this page and follow the instructions for sharing the Google spreadsheet.')
 except gspread.exceptions.APIError as e:
     if len(e.args)>0 and 'message' in e.args[0] and 'A sheet with the name' in e.args[0]['message'] and \
             'already exists' in e.args[0]['message']:
@@ -46,7 +46,7 @@ except gspread.exceptions.APIError as e:
         raise
     
     st.error('ERROR: The entered URL is not shared with Editor access. '+
-                 'Please reload this page and follow the instructions for sharing the Google sheet.')
+                 'Please reload this page and follow the instructions for sharing the Google spreadsheet.')
 except Exception as e:
     display_msg, traceback_msg = utils.get_error_msgs(st.session_state)
     st.error(display_msg)
