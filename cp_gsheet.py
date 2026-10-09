@@ -11,7 +11,7 @@ import utils
 from worksheets import CAR_GROUP_WORKSHEET, FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, SHEET_INDICATOR, DRIVER_WORKSHEET, TRIP_STATS_WORKSHEET
 
 
-def get_sheet(sht, name, clean=False, str_cols=[], name_cols=[]):
+def get_sheet(sht, name, clean=False, str_cols=[], name_cols=[], numeric_cols=[]):
     worksheet = sht.worksheet(name)
     records = worksheet.get_all_records()
     if len(records)>0:
@@ -21,7 +21,7 @@ def get_sheet(sht, name, clean=False, str_cols=[], name_cols=[]):
         df = pd.DataFrame(columns=cols)
 
     if clean:
-        df = utils.clean_df(df, str_cols=str_cols, name_cols=name_cols)
+        df = utils.clean_df(df, str_cols=str_cols, name_cols=name_cols, numeric_cols=numeric_cols)
 
     return df
 
@@ -92,8 +92,6 @@ def update_sheet(sht, name, df, worksheet_list, color=None, index=None, row=1, c
 def init(gsheet):
     sht = gsheet['file']
     worksheet_list = gsheet['worksheets']
-    if gsheet['is_init']:
-        raise ValueError('Cannot initialize. This spreadsheet has already been initialized')
 
     assert FULL_ROSTER_WORKSHEET in worksheet_list, f'Worksheet entitled {FULL_ROSTER_WORKSHEET} must exist in spreadsheet and contained roster export from app'
 
@@ -120,24 +118,32 @@ def init(gsheet):
 
     df_roster = df_roster.drop(columns=DELETE_COLS)
 
-    avail_cols = [x+' Available' for x in day_cols]
     drivers = {NAME_COL:[], DRIVER_TYPE_COL:[]}
-    for k in avail_cols:
-        drivers[k] = []
+    for d in day_cols:
+        drivers[d] = []
     for k in df_roster.index:
+        is_driver = True
         if df_roster.loc[k, 'Driver'].lower()=='yes':
-            drivers[NAME_COL].append(df_roster.loc[k, NAME_COL])
-            drivers[DRIVER_TYPE_COL].append(constants.PREFERRED_DRIVER)
-            for c, d in zip(avail_cols, day_cols):
-                drivers[c].append(df_roster.loc[k, d])
+            if df_roster.loc[k, 'Will Have Car On The Ground'].lower()=='yes':
+                drivers[DRIVER_TYPE_COL].append(5)
+            else:
+                drivers[DRIVER_TYPE_COL].append(4)
         elif df_roster.loc[k, 'Backup Driver'].lower()=='yes':
+            if df_roster.loc[k, 'Will Have Car On The Ground'].lower()=='yes':
+                drivers[DRIVER_TYPE_COL].append(3)
+            else:
+                drivers[DRIVER_TYPE_COL].append(1)
+        elif df_roster.loc[k, 'Will Have Car On The Ground'].lower()=='yes':
+            drivers[DRIVER_TYPE_COL].append(2)
+        else:
+            is_driver = False
+
+        if is_driver:
             drivers[NAME_COL].append(df_roster.loc[k, NAME_COL])
-            drivers[DRIVER_TYPE_COL].append(constants.BACKUP_DRIVER)
-            for c, d in zip(avail_cols, day_cols):
-                drivers[c].append(df_roster.loc[k, d])
+            for d in day_cols:
+                drivers[d].append(df_roster.loc[k, d])
+
     df_drivers = pd.DataFrame(drivers)
-    for c in day_cols:
-        df_drivers[c] = ''
 
     update_sheet(sht, ROSTER_WORKSHEET, df_roster, worksheet_list)
     update_sheet(sht, DRIVER_WORKSHEET, df_drivers, worksheet_list)
@@ -218,7 +224,7 @@ def set_day(mode, worksheet_list, ndays):
     assert day<=ndays, 'Car group requested for a day beyond the number of days in the trip'
     return day
 
-def load_url(client, url):
+def load_url(client, url, reinit=False):
     url = url.strip()
     try:
         gsheet = get_spreadsheet(client, url)
@@ -230,7 +236,7 @@ def load_url(client, url):
     if not gsheet['has_cp_export']:
         errmsg = f'Spreadsheet does not have tab called "{FULL_ROSTER_WORKSHEET}" containing the roster' +\
                 ' from the app. Please follow the instructions below for setting up your Google spreadsheet.'
-    elif not gsheet['is_init']:
+    elif not gsheet['is_init'] or reinit:
         try:
             init(gsheet)
             gsheet = get_spreadsheet(client, url)

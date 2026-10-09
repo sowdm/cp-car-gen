@@ -3,7 +3,7 @@ import pytest
 
 from mock_gspread import set_mockreturn
 from cp_gsheet import get_spreadsheet
-from worksheets import SHEET_INDICATOR, FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, DRIVER_WORKSHEET, CAR_GROUP_WORKSHEET
+from worksheets import SHEET_INDICATOR, FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, DRIVER_WORKSHEET, CAR_GROUP_WORKSHEET, TRIP_STATS_WORKSHEET
 import constants
 import columns
 
@@ -19,6 +19,8 @@ data = {
     columns.GENERATION_COL:['Boomer (1946 - 1964)','Gen Z (1995 - 2012)'],
     columns.BIPOC_COL:['No','Yes'],
     columns.EXPERIENCE_COL:['I have a lot, but not with CP','None'],
+    'MiniVan Experience':['Yes','Yes'],
+    'Dietary Restrictions':['','']
 }
 df_full_roster = pd.DataFrame(data)
 
@@ -42,16 +44,30 @@ for k,d in enumerate(all_dates):
 df_roster = df_roster.drop(columns=columns.DELETE_COLS)
 
 drivers = {columns.NAME_COL:[], columns.DRIVER_TYPE_COL:[]}
+for d in day_cols:
+    drivers[d] = []
 for k in df_roster.index:
+    is_driver = True
     if df_roster.loc[k, 'Driver'].lower()=='yes':
-        drivers[columns.NAME_COL].append(df_roster.loc[k, columns.NAME_COL])
-        drivers[columns.DRIVER_TYPE_COL].append(constants.PREFERRED_DRIVER)
+        if df_roster.loc[k, 'Will Have Car On The Ground'].lower()=='yes':
+            drivers[columns.DRIVER_TYPE_COL].append(5)
+        else:
+            drivers[columns.DRIVER_TYPE_COL].append(4)
     elif df_roster.loc[k, 'Backup Driver'].lower()=='yes':
+        if df_roster.loc[k, 'Will Have Car On The Ground'].lower()=='yes':
+            drivers[columns.DRIVER_TYPE_COL].append(3)
+        else:
+            drivers[columns.DRIVER_TYPE_COL].append(1)
+    elif df_roster.loc[k, 'Will Have Car On The Ground'].lower()=='yes':
+        drivers[columns.DRIVER_TYPE_COL].append(2)
+    else:
+        is_driver = False
+
+    if is_driver:
         drivers[columns.NAME_COL].append(df_roster.loc[k, columns.NAME_COL])
-        drivers[columns.DRIVER_TYPE_COL].append(constants.BACKUP_DRIVER)
+        for d in day_cols:
+            drivers[d].append(df_roster.loc[k, d])
 df_drivers = pd.DataFrame(drivers)
-for c in day_cols:
-    df_drivers[c] = ''
 
 
 @pytest.mark.parametrize('worksheets',[[], ['WS1','WS2']])
@@ -103,7 +119,7 @@ def test_has_cp_export(monkeypatch, client, worksheets):
 
 
 def test_is_init(monkeypatch, client):
-    worksheets = [FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, DRIVER_WORKSHEET]
+    worksheets = [FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, DRIVER_WORKSHEET, TRIP_STATS_WORKSHEET]
     dfs = [df_full_roster, df_roster, df_drivers]
     set_mockreturn(client, monkeypatch, worksheets, dfs)
 
@@ -121,7 +137,7 @@ def test_is_init(monkeypatch, client):
 
 @pytest.mark.parametrize('day', range(1, len(all_dates)+1))
 def test_has_cars(monkeypatch, client, day):
-    worksheets = [FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, DRIVER_WORKSHEET]
+    worksheets = [FULL_ROSTER_WORKSHEET, ROSTER_WORKSHEET, DRIVER_WORKSHEET, TRIP_STATS_WORKSHEET]
     for k in range(day):
         worksheets.append(CAR_GROUP_WORKSHEET.format(k+1))
     dfs = [df_full_roster, df_roster, df_drivers]

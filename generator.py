@@ -402,10 +402,9 @@ def rand_car_groups(car_groups0, vols0, potential_drivers0, must_be_in_same_car0
         raise ValueError(f'Failed to generate car group due to constraints on car pairings and drivers: {fail_msg}')
 
 
-def get_drivers(ncars, names, types, user_requests, subset=None, must_be_in_same_car=[]):
+def get_drivers(ncars, names, types, subset=None, must_be_in_same_car=[]):
     if subset:
         types         = [x for x,y in zip(types        , names) if y in subset]
-        user_requests = [x for x,y in zip(user_requests, names) if y in subset]
         names         = [y for   y in names                     if y in subset]
 
 
@@ -413,16 +412,13 @@ def get_drivers(ncars, names, types, user_requests, subset=None, must_be_in_same
     random.shuffle(order)
 
     drivers = []
-    for k in order:
-        if user_requests[k] and not any(names[k] in m and len(set(m) & set(drivers))>0 for m in must_be_in_same_car):
-            drivers.append(names[k])
-
-        if len(drivers)==ncars:
-            return drivers
-    
-    for label in [constants.ALWAYS_DRIVER, constants.PREFERRED_DRIVER, constants.BACKUP_DRIVER, constants.NEVER_DRIVER]:
+    if len(types)==0:
+        max_type = 0
+    else:
+        max_type = max(types)
+    for label in range(max_type, -1, -1):
         for k in order:
-            if not user_requests[k] and types[k]==label and not any(names[k] in m and len(set(m) & set(drivers))>0 for m in must_be_in_same_car):
+            if types[k]==label and not any(names[k] in m and len(set(m) & set(drivers))>0 for m in must_be_in_same_car):
                 drivers.append(names[k])
                 
             if len(drivers)==ncars:

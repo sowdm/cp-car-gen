@@ -17,6 +17,13 @@ if st.session_state['load_roster']:
                                                 'MiniVan Experience', 'Dietary Restrictions'],
                                         name_cols=[NAME_COL])
 
+        if 'Will Have Car On The Ground' not in df_roster:  # Check if deprecated roster spreadsheet
+            st.session_state['gsheet'], errmsg = cp_gsheet.load_url(st.session_state['client'], gsheet['url'], reinit=True)
+            df_roster = cp_gsheet.get_sheet(gsheet['file'], ROSTER_WORKSHEET, clean=True, 
+                                                    str_cols=[columns.HALF_DAY_COL, columns.GENERATION_COL, columns.EXPERIENCE_COL, columns.AFFILIATION_COL,
+                                                            'MiniVan Experience', 'Dietary Restrictions'],
+                                                    name_cols=[NAME_COL])
+
     no_name = df_roster[NAME_COL].apply(lambda x: len(x.strip())==0)
     no_name = no_name[no_name]
     num_unnamed = 0
@@ -62,26 +69,26 @@ if col3.button('Accept Roster'):
 
     if update:
         df_drivers = cp_gsheet.get_sheet(gsheet['file'], DRIVER_WORKSHEET, clean=True, 
-                                                str_cols=[columns.DRIVER_TYPE_COL],
+                                                numeric_cols=[columns.DRIVER_TYPE_COL],
                                                 name_cols=[NAME_COL])
     for n in st.session_state['select_skip_day']:
         # Update local copies of roster
         st.session_state['df_roster_full'].loc[st.session_state['df_roster_full'][NAME_COL]==n, day_col] = False
-        df_drivers.loc[df_drivers[NAME_COL]==n, day_col+' Available'] = False
+        df_drivers.loc[df_drivers[NAME_COL]==n, day_col] = False
         drop = st.session_state['df_roster'][NAME_COL]==n
         st.session_state['df_roster'] = st.session_state['df_roster'].drop(index=drop[drop].index)
 
     for n in st.session_state['select_never_arrived']:
         # Update local copies of roster
         st.session_state['df_roster_full'].loc[st.session_state['df_roster_full'][NAME_COL]==n, day_cols] = False
-        df_drivers.loc[df_drivers[NAME_COL]==n, [x+' Available' for x in day_cols]] = False
+        df_drivers.loc[df_drivers[NAME_COL]==n, day_cols] = False
         drop = st.session_state['df_roster'][NAME_COL]==n
         st.session_state['df_roster'] = st.session_state['df_roster'].drop(index=drop[drop].index)
 
     for n in st.session_state['select_add']:
         # Update local copies of roster
         st.session_state['df_roster_full'].loc[st.session_state['df_roster_full'][NAME_COL]==n, day_cols[st.session_state['day']-1:]] = True
-        df_drivers.loc[df_drivers[NAME_COL]==n,  [x+' Available' for x in day_cols[st.session_state['day']-1:]]] = True
+        df_drivers.loc[df_drivers[NAME_COL]==n,  day_cols[st.session_state['day']-1:]] = True
         st.session_state['df_roster'] = pd.concat([st.session_state['df_roster'], 
                                                    st.session_state['df_roster_full'].loc[st.session_state['df_roster_full'][NAME_COL]==n]],
                                                    ignore_index=True)
