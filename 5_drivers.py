@@ -10,13 +10,13 @@ from columns import NAME_COL, DRIVER_TYPE_COL
 
 gsheet = base_page.setup(__file__)
 
+DEFAULT_DRIVERS = "Today's Drivers"
+DEFAULT_NOT_DRIVERS = 'Available Drivers'
+
 ncars = st.session_state['cargen'].ncars
 must_be_in_same_car = st.session_state['cargen'].must_be_in_same_car
 
 st.subheader(f'Driver Selection')
-
-st.info(f'The default drivers shown here are based on the "{DRIVER_WORKSHEET}" tab of the Google spreadsheet. '+
-        f'To control the default drivers, see instructions at the bottom of this page.')
 
 def reload():
     st.session_state['reload_drivers'] = True
@@ -90,12 +90,13 @@ if len(st.session_state['separate_car_drivers'])>0:
                f'the {DRIVER_WORKSHEET} tab of the Google Sheet: {st.session_state["separate_car_drivers"]}')
 
 original_items = [
-    {'header': "Today's Drivers",  'items': drivers},
-    {'header': 'Available Drivers', 'items': not_drivers},
+    {'header': DEFAULT_DRIVERS,  'items': drivers},
+    {'header': DEFAULT_NOT_DRIVERS, 'items': not_drivers},
     {'header': 'Permanently Remove from Driver Pool (i.e. does not have car)', 'items': []}
 ]
 
-st.markdown(f'Select drivers for {ncars} remaining cars by dragging between the Drivers and NOT Drivers lists')
+st.markdown(f'Select drivers for {ncars} remaining cars by dragging between the "{DEFAULT_DRIVERS}" and "{DEFAULT_NOT_DRIVERS}" lists. '+\
+            'To remove people from the driver pool, drag them to the "Permanently Remove" list.')
 
 col0, col1, col2 = st.columns(3)
 
@@ -135,7 +136,7 @@ if col2.button('Accept Drivers', disabled=disabled):
     st.switch_page('6_cargen.py')
 
 st.subheader('Driver Pool Updates')
-st.text("Add drivers or update driver likelihoods (drivers with highest likelihoods are selected as default set of drivers)")
+st.text("Add drivers to the driver pool or update driver likelihoods (drivers with highest likelihoods are selected as default set of drivers)")
 
 col0, col1, col2 = st.columns(3)
 name_update = col0.selectbox('Name', st.session_state['cargen'].df_roster[NAME_COL])

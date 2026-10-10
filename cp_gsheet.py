@@ -165,7 +165,7 @@ def init(gsheet):
 
 def update_trip_stats(df_roster, day_cols, sht, worksheet_list):
     df = pd.DataFrame(columns=['Volunteers','Capacity (Drivers x 4)','Not Enough Drivers Warning!', 'Drivers', 
-                            'Backup Drivers', 'BIPOC Status'], index=day_cols)
+                            'Backup Drivers', columns.BIPOC_COL], index=day_cols)
     df['Volunteers'] = df_roster[day_cols].sum()
 
     for c in day_cols:
@@ -173,26 +173,26 @@ def update_trip_stats(df_roster, day_cols, sht, worksheet_list):
         df.loc[c, 'Capacity (Drivers x 4)'] = df.loc[c, 'Drivers'] * 4
         df.loc[c, 'Not Enough Drivers Warning!'] = df.loc[c, 'Capacity (Drivers x 4)'] < df.loc[c, 'Volunteers']
         df.loc[c, 'Backup Drivers'] = df_roster['Backup Driver'][df_roster[c]].sum()
-        df.loc[c, 'BIPOC Status'] = df_roster['BIPOC Status'][df_roster[c]].sum()
+        df.loc[c, columns.BIPOC_COL] = df_roster[columns.BIPOC_COL][df_roster[c]].sum()
 
     update_sheet(sht, TRIP_STATS_WORKSHEET, df.reset_index(names=''), worksheet_list)
     nrows = len(df)+3
     worksheet_list.append(TRIP_STATS_WORKSHEET)
 
-    generations = df_roster['Generation'].unique()
+    generations = df_roster[columns.GENERATION_COL].unique()
     df = pd.DataFrame(columns=generations, index=day_cols)
 
     for c in day_cols:
-        df.loc[c, : ] = df_roster[df_roster[c]]['Generation'].value_counts()
+        df.loc[c, : ] = df_roster[df_roster[c]][columns.GENERATION_COL].value_counts()
 
     update_sheet(sht, TRIP_STATS_WORKSHEET, df.reset_index(names=''), worksheet_list, row=nrows, clear=False)
     nrows += len(df)+2
 
-    exp = df_roster['Canvassing Experience'].unique()
+    exp = df_roster[columns.EXPERIENCE_COL].unique()
     df = pd.DataFrame(columns=exp, index=day_cols)
 
     for c in day_cols:
-        df.loc[c, : ] = df_roster[df_roster[c]]['Canvassing Experience'].value_counts()
+        df.loc[c, : ] = df_roster[df_roster[c]][columns.EXPERIENCE_COL].value_counts()
 
     update_sheet(sht, TRIP_STATS_WORKSHEET, df.reset_index(names=''), worksheet_list, row=nrows, clear=False)
     nrows += len(df)+2

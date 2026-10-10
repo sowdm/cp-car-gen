@@ -37,7 +37,7 @@ class CarGenerator:
         
         self.df_roster['age'] = gen_labels.apply(lambda x: new_age_cats.index(x))
         # No longer used
-        # self.df_roster['bipoc'] = self.df_roster['BIPOC Status'].apply(lambda x: list(self.df_roster['BIPOC Status'].unique()).index(x))
+        # self.df_roster['bipoc'] = self.df_roster[columns.BIPOC_COL].apply(lambda x: list(self.df_roster[columns.BIPOC_COL].unique()).index(x))
         self.df_roster['experience'] = combine_experience_groups(self.df_roster[EXPERIENCE_COL], self.day)
     
         self.must_be_in_same_car, self.separate_car, self.do_not_pair = get_pairs(self.df_pairings)

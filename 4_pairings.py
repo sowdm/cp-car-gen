@@ -12,8 +12,8 @@ st.subheader('Are there people you want to be in the same car? Or people you wan
 st.info('1. Create a new row by clicking the empty row in the table below\n' \
         '2. Add names of 2 volunteers who you want in the same car or different cars. For groups larger than 2, use multiple rows.\n' \
             '(**TIP: To put a single person in their own car, leave the 2nd name blank.**) \n'
-        '3. Indicate whether you want them in the same car or different cards\n' \
-        f'4. If a group that will be in a separate car, indicate "Yes" in the "{SEPARATE_COL} column\n' \
+        '3. Indicate whether you want them in the same car or different car\n' \
+        f'4. If a group will be in a separate car (i.e. do not fill remaining seats in car with other volunteers), indicate "Yes" in the "{SEPARATE_COL} column\n' \
         '5. Repeat as needed\n' \
         '6. Click "Accept Pairings" when complete' \
         )
