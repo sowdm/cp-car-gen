@@ -67,14 +67,14 @@ if not isinstance(st.session_state['df_car_groups'], pd.DataFrame):
             name+=')'
 
             if row['Role']=='Driver':
-                carpool_dict['header'] = f'Car {car} Driven By {name}'
+                carpool_dict['header'] = f'Car {car} Driven By **{name}**'
             else:
                 carpool_dict['items'].append(name)
 
 st.subheader('Generated Car Groups')
 
-st.info('**To re-arrange car pools, drag and drop between lists or use the "Swap Between Carpools button". '
-        'The latter may be better for large grips. Click Export button when complete.**\n\n' \
+st.info('**To re-arrange car pools, use the select boxes to add and subtract people from a car. '
+        'Click Export button when complete.**\n\n' \
         '**Generations**: S = Silent Generation, B = Boomer, X = Gen X, M = Millenial, Z = Gen Z\n\n' \
         '**Experience**: E0 = None, E1 = A little w/o CP, E2 = A lot w/o CP, E3 = A little w/ CP, E4 = A lot w/ CP\n\n' \
         'Action = Action Academy Student or Graduate')
@@ -84,37 +84,60 @@ car_sizes = st.session_state['df_car_groups']['Car'].value_counts()
 min_car_size = car_sizes.min()-1
 max_car_size = car_sizes.max()-1
 
-container = st.container()
+container_error = st.container()
+container_warning = st.container()
 
 all_names = [y for x in st.session_state['car_groups_default'] for y in x['items']]
 
-swap_col0, swap_col1, swap_col2 = st.columns(3)
-swap_name1 = swap_col0.selectbox('Swap Name 1', all_names)
-swap_name2 = swap_col1.selectbox('Swap Name 2', all_names)
-if swap_col2.button('Swap Between Carpools'):
-    # Update defaults
-    st.session_state['car_groups_default'] = st.session_state['carpool_selection']
-    for car in st.session_state['car_groups_default']:
-        for k in range(len(car['items'])):
-            if car['items'][k]==swap_name1:
-                car['items'][k] = swap_name2
-            elif car['items'][k]==swap_name2:
-                car['items'][k] = swap_name1
+st.session_state['carpool_selection'] = []
+for car in st.session_state['car_groups_default']:
+    st.session_state['carpool_selection'].append(st.multiselect(car['header'], options=all_names, default=car['items']))
 
-st.session_state['carpool_selection'] = sort_items(st.session_state['car_groups_default'], multi_containers=True, direction='horizontal')
-
-req_car_sizes = [len(x['items']) for x in st.session_state['carpool_selection']]
+req_car_sizes = [len(x) for x in st.session_state['carpool_selection']]
 if min(req_car_sizes) < min_car_size or max(req_car_sizes) > max_car_size:
-    with container:
+    with container_warning:
         st.warning(f'One or more carpools has fewer/more volunteers than the minimum/maximum expected ({min_car_size}/{max_car_size}). ' +\
                    'This is allowable but please review to ensure it is desired!')
 
 if col0.button('Previous'):
     st.switch_page('5_drivers.py')
 
-if col2.button(f'Export Day {day} Car Group to Google Spreadsheet'):
+# Ensure that nobody is in multiple cars
+counts = [[] for _ in all_names]
+for carnum, car in enumerate(st.session_state['carpool_selection']):
+    for y in car:
+        for k,n in enumerate(all_names):
+            if y==n:
+                counts[k].append(carnum)
+
+multiple_cars = [(x,y) for x,y in zip(all_names, counts) if len(y)>1]
+no_cars = [x for x,y in zip(all_names, counts) if len(y)==0]
+
+disabled = len(multiple_cars)>0 or len(no_cars)>0
+if disabled:
+    with container_error:
+        errmsg = ''
+        if len(multiple_cars)>0:
+            errmsg = f'There are volunteers in multiple cars. Please correct: '
+            for name, cars in multiple_cars:
+                errmsg+=name + ' (Cars '
+                for c in cars:
+                    errmsg+=f'{c},'
+                errmsg = errmsg[:-1]  + '), ' # Remove trailing comma
+
+            errmsg = errmsg[:-2]
+
+        if len(no_cars)>0:
+            if len(errmsg)>0:
+                errmsg+='\n\n'
+
+            errmsg += f'There are volunteers NOT in a car. Please correct: {', '.join(no_cars)}'
+
+        st.error(errmsg)
+
+if col2.button(f'Export Day {day} Car Group to Google Spreadsheet', disabled=disabled):
     for k in range(len(st.session_state['carpool_selection'])):
-        names = [re.sub(r'\s\(.*\)', '', x) for x in st.session_state['carpool_selection'][k]['items']]
+        names = [re.sub(r'\s\(.*\)', '', x) for x in st.session_state['carpool_selection'][k]]
         for n in names:
             i = st.session_state['df_car_groups'][columns.NAME_COL]==n
             assert i.any(), f'Name {n} not found in car groups'
