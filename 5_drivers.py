@@ -5,6 +5,7 @@ from streamlit_sortables import sort_items
 import base_page
 import cp_gsheet
 from generator import get_drivers
+import worksheets
 from worksheets import DRIVER_WORKSHEET
 from columns import NAME_COL, DRIVER_TYPE_COL
 
@@ -17,6 +18,8 @@ ncars = st.session_state['cargen'].ncars
 must_be_in_same_car = st.session_state['cargen'].must_be_in_same_car
 
 st.subheader(f'Driver Selection')
+header_container = st.container()
+nav_cols = base_page.navigation_buttons(2, '4_pairings.py')
 
 def reload():
     st.session_state['reload_drivers'] = True
@@ -39,6 +42,14 @@ else:
     st.session_state['df_drivers_all'] = cp_gsheet.get_sheet(gsheet['file'], DRIVER_WORKSHEET, clean=True, 
                                      numeric_cols=[DRIVER_TYPE_COL],
                                      name_cols=[NAME_COL])
+
+    if 'Driver Type (Always/Preferred/Backup/Never)' in st.session_state['df_drivers_all']:
+        st.error('This Google spreadsheet was inialized prior to major app changes. '
+                f'In the Google spreadsheet, please delete all sheets beginning with "{worksheets.SHEET_INDICATOR}" '+\
+                f'except "{worksheets.FULL_ROSTER_WORKSHEET}" and click Restart.')
+        st.stop()
+        
+    
     df_drivers = st.session_state['df_drivers_all'][st.session_state['df_drivers_all'][NAME_COL].isin(df_roster[NAME_COL])]
     df_drivers = df_drivers[~df_drivers[NAME_COL].isin(st.session_state['ignore'])]
 
@@ -60,10 +71,7 @@ else:
                     st.error(f'No drivers found in paired group {m} who must be in a separate car due to size. Press Previous to update pairings '+
                             f'or update the {DRIVER_WORKSHEET} tab of the Google spreadsheet and press Reload.')
 
-                col1, col2 = st.columns(2)
-                if col1.button('Previous'):
-                    st.switch_page('4_pairings.py')
-                col2.button('Reload Spreadsheet', on_click=reload, 
+                nav_cols[0].button('Reload Spreadsheet', on_click=reload, 
                     help=f'Reload "{DRIVER_WORKSHEET}" tab from Google spreadsheet (for example if changes were made)')
                 st.stop()
 
@@ -89,16 +97,15 @@ if len(st.session_state['separate_car_drivers'])>0:
     st.warning('The following individuals will be drivers based on pairings selected on the last page and preferences in '+
                f'the {DRIVER_WORKSHEET} tab of the Google Sheet: {st.session_state["separate_car_drivers"]}')
 
+with header_container:
+    st.markdown(f'Select drivers for {ncars} remaining cars by dragging between the "{DEFAULT_DRIVERS}" and "{DEFAULT_NOT_DRIVERS}" lists. '+\
+                'To remove people from the driver pool, drag them to the "Permanently Remove" list.')
+
 original_items = [
     {'header': DEFAULT_DRIVERS,  'items': drivers},
     {'header': DEFAULT_NOT_DRIVERS, 'items': not_drivers},
     {'header': 'Permanently Remove from Driver Pool (i.e. does not have car)', 'items': []}
 ]
-
-st.markdown(f'Select drivers for {ncars} remaining cars by dragging between the "{DEFAULT_DRIVERS}" and "{DEFAULT_NOT_DRIVERS}" lists. '+\
-            'To remove people from the driver pool, drag them to the "Permanently Remove" list.')
-
-col0, col1, col2 = st.columns(3)
 
 selection = sort_items(original_items, multi_containers=True, direction='horizontal')
 
@@ -116,13 +123,10 @@ for m in must_be_in_same_car:
         disabled = True
         st.error(f'ERROR: More than one driver selected from paired group: {m}')
 
-if col0.button('Previous'):
-    st.switch_page('4_pairings.py')
-
-col1.button('Reload Spreadsheet', on_click=reload, 
+nav_cols[0].button('Reload Spreadsheet', on_click=reload, 
             help=f'Reload "{DRIVER_WORKSHEET}" tab from Google spreadsheet (for example if changes were made)')
 
-if col2.button('Accept Drivers', disabled=disabled):
+if nav_cols[1].button('Accept Drivers', disabled=disabled):
     perm_del_drivers = selection[2]['items']
     if len(perm_del_drivers)>0:
         st.session_state['df_drivers_all'] = st.session_state['df_drivers_all'][~st.session_state['df_drivers_all'][NAME_COL].isin(perm_del_drivers)]

@@ -97,7 +97,8 @@ def init(gsheet):
 
     df_full_roster = gsheet['df_roster_raw']
     missing_cols = [x for x in ORIG_COLS if x not in df_full_roster]
-    assert len(missing_cols)==0, f'Expected columns are missing from {FULL_ROSTER_WORKSHEET}: {missing_cols}'
+    if len(missing_cols)>0:
+        return f'ERROR: Expected columns are missing from "{FULL_ROSTER_WORKSHEET}" tab: {", ".join(missing_cols)}. Please correct in Google Sheets.'
 
     df_roster = df_full_roster[ORIG_COLS]
     df_roster = df_roster.rename(columns=RENAME_COLS)
@@ -161,6 +162,8 @@ def init(gsheet):
         df_roster.loc[k, NAME_COL] = f'UNNAMED {num_unnamed}'
 
     update_trip_stats(df_roster, day_cols, sht, worksheet_list)
+
+    return None
 
 
 def update_trip_stats(df_roster, day_cols, sht, worksheet_list):
@@ -238,8 +241,9 @@ def load_url(client, url, reinit=False):
                 ' from the app. Please follow the instructions below for setting up your Google spreadsheet.'
     elif not gsheet['is_init'] or reinit:
         try:
-            init(gsheet)
-            gsheet = get_spreadsheet(client, url)
+            errmsg = init(gsheet)
+            if not errmsg:
+                gsheet = get_spreadsheet(client, url)
         except gspread.exceptions.APIError as e:
             if len(e.args)>0 and 'message' in e.args[0] and 'A tab with the name' in e.args[0]['message'] and \
                  'already exists' in e.args[0]['message']:
