@@ -55,8 +55,12 @@ st.session_state['load_roster'] = False
 
 with header_container:  # This will be at the top
     st.header(f"Day {st.session_state['day']} Roster Setup")
-    st.info(f'The below roster is correct if the "{ROSTER_WORKSHEET}" tab of the Google spreadsheet is up-to-date. '+
-            '\n\nIf is not, update it and press the "Reload Spreadsheet" button below.')
+    msg = f'The below Day {st.session_state['day']} roster is correct if the "{ROSTER_WORKSHEET}" tab of the Google spreadsheet is up-to-date. '+\
+            '\n\nIf is not, update it and press the "Reload Spreadsheet" button below.'
+    if st.session_state['day'] > 1:
+        msg+=f'\n\nIf you would like to redo the Day {st.session_state['day']-1} carpool, please delete the '+\
+            f'"{worksheets.CAR_GROUP_WORKSHEET.format(st.session_state['day']-1)}" tab of the Google spreadsheet.'
+    st.info(msg)
 
 day_col = [x for x in df_roster.columns if x.startswith(f'Day {st.session_state['day']}')][0]
 
