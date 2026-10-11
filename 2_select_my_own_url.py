@@ -10,12 +10,9 @@ st.subheader('Enter Google Sheet URL')
 
 url = st.text_input('Google Sheet URL')
 
-left,right = st.columns(2)
+nav_cols = base_page.navigation_buttons(1, '1_get_url.py')
 
-if left.button('Previous'):
-    st.switch_page('1_get_url.py')
-
-if right.button('Create Car Groups for This URL'):
+if nav_cols[0].button('Create Car Groups for This URL'):
     if len(url)==0:
         st.toast('ERROR: URL must be entered into Google Sheet URL textbox.', duration='long')
     else:

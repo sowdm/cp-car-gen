@@ -6,9 +6,7 @@ import base_page
 import columns
 
 gsheet = base_page.setup(__file__)
-
-if st.button('Previous'):
-    st.switch_page('3_roster.py')
+base_page.navigation_buttons(0, '3_roster.py')
 
 df_roster = st.session_state['df_roster_full']
 

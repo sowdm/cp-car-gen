@@ -25,7 +25,7 @@ df_roster = st.session_state['df_roster']
 
 df_pairings = st.session_state['df_pairings'] if isinstance(st.session_state['df_pairings'], pd.DataFrame) else pd.DataFrame(columns=[NAME1_COL, NAME2_COL, PAIR_COL, SEPARATE_COL])
 
-col0, col1 = st.columns(2)
+nav_cols = base_page.navigation_buttons(1, '3_roster.py')
 
 name_config = st.column_config.SelectboxColumn(options=df_roster['Name'].tolist())
 pair_config = st.column_config.SelectboxColumn(options=[SAME_CAR, DIFFERENT_CAR], 
@@ -47,10 +47,7 @@ disabled = (df[NAME1_COL] == df[NAME2_COL]).any()
 if disabled:
     st.warning(f'ERROR: a row exists with the same name in {NAME1_COL} and {NAME2_COL} columns. Please correct!')
 
-if col0.button('Previous'):
-    st.switch_page('3_roster.py')
-
-if col1.button('Accept Pairings', disabled=disabled):
+if nav_cols[0].button('Accept Pairings', disabled=disabled):
     # If new rows are added, they may contain a list of a string rather than just a string
     st.session_state['drivers'] = None
     st.session_state['df_pairings'] = df.copy()

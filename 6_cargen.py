@@ -12,9 +12,10 @@ from worksheets import CAR_GROUP_WORKSHEET
 
 gsheet = base_page.setup(__file__)
 
-col0, col1, col2 = st.columns(3)
+nav_cols = base_page.navigation_buttons(2, '5_drivers.py')
+
 day = st.session_state['day']
-if col1.button('Re-Generate Car Groups'):
+if nav_cols[0].button('Re-Generate Car Groups'):
     st.session_state['df_car_groups'] = None
     
 if not isinstance(st.session_state['df_car_groups'], pd.DataFrame):
@@ -99,9 +100,6 @@ if min(req_car_sizes) < min_car_size or max(req_car_sizes) > max_car_size:
         st.warning(f'One or more carpools has fewer/more volunteers than the minimum/maximum expected ({min_car_size}/{max_car_size}). ' +\
                    'This is allowable but please review to ensure it is desired!')
 
-if col0.button('Previous'):
-    st.switch_page('5_drivers.py')
-
 # Ensure that nobody is in multiple cars
 counts = [[] for _ in all_names]
 for carnum, car in enumerate(st.session_state['carpool_selection']):
@@ -135,7 +133,7 @@ if disabled:
 
         st.error(errmsg)
 
-if col2.button(f'Export Day {day} Car Group to Google Spreadsheet', disabled=disabled):
+if nav_cols[1].button(f'Export Day {day} Car Group to Google Spreadsheet', disabled=disabled):
     for k in range(len(st.session_state['carpool_selection'])):
         names = [re.sub(r'\s\(.*\)', '', x) for x in st.session_state['carpool_selection'][k]]
         for n in names:

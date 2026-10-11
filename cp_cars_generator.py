@@ -92,12 +92,7 @@ def main(mode):
 
     df_out = generator.gen_car_groups(df_roster, df_pairings, day, sht)
 
-    # TODO: Resort sheets so that highest priority are on the left???
     # TODO: Add key sheet that tells what each sheet is including what ! is???
-    # TODO: In app, include ability to modify pairings
-
-    # sheet = DETAILED_CAR_GROUP_WORKSHEET.format(day)
-    # helper.update_sheet(sht, sheet, df_out.reset_index(), worksheet_list)
 
     sheet = CAR_GROUP_WORKSHEET.format(day)
     df_out_min = df_out[[x for x in df_out.columns if x.startswith('Car')]].reset_index()
