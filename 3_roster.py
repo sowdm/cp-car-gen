@@ -4,11 +4,15 @@ import streamlit as st
 
 import base_page
 import cp_gsheet
+import worksheets
 from worksheets import ROSTER_WORKSHEET, DRIVER_WORKSHEET
 import columns
 from columns import NAME_COL
 
 gsheet = base_page.setup(__file__)
+
+header_container = st.container()
+nav_cols = base_page.navigation_buttons(3, '2_select_my_own_url.py', decision_key=st.session_state['is_sample'], alt_prev_file='1_get_url.py')
 
 if st.session_state['load_roster']:
     with st.spinner():
@@ -31,6 +35,13 @@ if st.session_state['load_roster']:
         num_unnamed+=1
         df_roster.loc[k, NAME_COL] = f'UNNAMED {num_unnamed}'
 
+    duplicates = df_roster[NAME_COL].duplicated()
+    if duplicates.any():
+        st.error(f'The following names occur twice in the "{ROSTER_WORKSHEET} tab: {", ".join(df_roster[duplicates][NAME_COL])}. '+\
+                 f'In the Google spreadsheet, please delete all sheets beginning with "{worksheets.SHEET_INDICATOR}" '+\
+                f'except "{worksheets.FULL_ROSTER_WORKSHEET}" and fix the repeated names issue in "{worksheets.FULL_ROSTER_WORKSHEET}".')
+        st.stop()
+
     st.session_state['df_roster_full'] = df_roster
 
     day_cols = [x for x in df_roster.columns if re.search(r'^Day\s\d+\s', x)]
@@ -42,28 +53,25 @@ else:
 
 st.session_state['load_roster'] = False
 
-st.header(f"Day {st.session_state['day']} Roster Setup")
-st.info(f'The below roster is correct if the "{ROSTER_WORKSHEET}" tab of the Google spreadsheet is up-to-date. '+
-        '\n\nIf is not, update it and press the "Reload Spreadsheet" button below.')
+with header_container:  # This will be at the top
+    st.header(f"Day {st.session_state['day']} Roster Setup")
+    st.info(f'The below roster is correct if the "{ROSTER_WORKSHEET}" tab of the Google spreadsheet is up-to-date. '+
+            '\n\nIf is not, update it and press the "Reload Spreadsheet" button below.')
 
 day_col = [x for x in df_roster.columns if x.startswith(f'Day {st.session_state['day']}')][0]
 
 df_roster = df_roster[df_roster[day_col]].reset_index(drop=True)
 st.session_state['df_roster'] = df_roster
 
-col0, col1, col2, col3 = st.columns(4)
-if col0.button('Previous'):
-    st.switch_page('1_get_url.py' if st.session_state['is_sample'] else '2_select_my_own_url.py')
-
 def reload():
     st.session_state['load_roster'] = True
 
-col1.button('Reload Spreadsheet', help=f'Reload "{ROSTER_WORKSHEET}" tab from Google spreadsheet (for example if changes were made)', on_click=reload)
+nav_cols[0].button('Reload Spreadsheet', help=f'Reload "{ROSTER_WORKSHEET}" tab from Google spreadsheet (for example if changes were made)', on_click=reload)
 
-if col2.button('Learn About My Trip'):
+if nav_cols[1].button('Learn About My Trip'):
     st.switch_page('3a_trip_stats.py')
 
-if col3.button('Accept Roster'):
+if nav_cols[2].button('Accept Roster'):
     update = len(st.session_state['select_skip_day'])>0 or len(st.session_state['select_never_arrived'])>0 or \
              len(st.session_state['select_add'])>0
 
