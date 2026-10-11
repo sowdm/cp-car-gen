@@ -41,18 +41,18 @@ if not isinstance(st.session_state['df_car_groups'], pd.DataFrame):
                 gen = 'S'
             name = f'{row[columns.NAME_COL]} ({gen}'
 
-            exp = columns.EXPERIENCE_COL.lower()
-            if 'with cp' in columns.EXPERIENCE_COL:
+            exp = row[columns.EXPERIENCE_COL].lower()
+            if 'not with cp' in exp or 'without cp' in exp:
                 if 'a lot' in exp:
-                    exp = 4
+                    exp = 2
                 else:
-                    exp = 3
+                    exp = 1
             elif 'a lot' in exp:
-                exp = 2
+                exp = 4
             elif 'none' in exp:
                 exp = 0
             else:
-                exp = 1
+                exp = 3
 
             name+=f', E{exp}'
 
