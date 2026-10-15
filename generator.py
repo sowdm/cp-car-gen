@@ -129,9 +129,12 @@ def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, se
                 is_academy = df_roster.loc[car, AFFILIATION_COL].str.lower().str.contains('action academy')
                 bipoc_score = is_academy[is_bipoc].sum()>0 and is_bipoc.sum()==1  # Do we have 1 academy bipoc and only 1 bipoc in car
                 academy_score = is_academy.sum()==1
+                no_exp_score =         (self.df_roster[EXPERIENCE_COL].str.lower()=='none').sum()
+                no_exp_score = max(0, no_exp_score-1)
             else:
                 bipoc_score = 0
                 academy_score = 0
+                no_exp_score = 0
 
             age_score = df_roster.loc[car,'age'].duplicated().sum()
             exp_score = df_roster.loc[car,'experience'].duplicated().sum()
@@ -140,7 +143,7 @@ def gen_car_groups(df_roster, drivers, config, carsizes, must_be_in_same_car, se
             prev_score = prev_pair.flatten()[idx].sum() / 2  # prev_pair is symmetric. Divide by 2 to only sum 1 side
 
             score+=config['ACADEMY_WEIGHT'] * academy_score + config['BIPOC_WEIGHT'] * bipoc_score + config['AGE_WEIGHT'] * age_score + \
-                config['EXP_WEIGHT'] * exp_score + config['PREV_WEIGHT'] * prev_score
+                config['EXP_WEIGHT'] * exp_score + config['PREV_WEIGHT'] * prev_score + config['NO_EXP_WEIGHT'] * no_exp_score
 
         if score < min_score:
             best_group = car_groups
