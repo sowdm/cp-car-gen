@@ -135,7 +135,7 @@ if disabled:
 
 if nav_cols[1].button(f'Export Day {day} Car Group to Google Spreadsheet', disabled=disabled):
     for k in range(len(st.session_state['carpool_selection'])):
-        names = [re.sub(r'\s\(.*\)', '', x) for x in st.session_state['carpool_selection'][k]]
+        names = [x[:x.rfind('(')-1] for x in st.session_state['carpool_selection'][k]]
         for n in names:
             i = st.session_state['df_car_groups'][columns.NAME_COL]==n
             assert i.any(), f'Name {n} not found in car groups'
