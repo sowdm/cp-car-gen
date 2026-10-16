@@ -38,8 +38,8 @@ if st.session_state['load_roster']:
     duplicates = df_roster[NAME_COL].duplicated()
     if duplicates.any():
         st.error(f'The following names occur twice in the "{ROSTER_WORKSHEET} tab: {", ".join(df_roster[duplicates][NAME_COL])}. '+\
-                 f'In the Google spreadsheet, please delete all sheets beginning with "{worksheets.SHEET_INDICATOR}" '+\
-                f'except "{worksheets.FULL_ROSTER_WORKSHEET}" and fix the repeated names issue in "{worksheets.FULL_ROSTER_WORKSHEET}".')
+                 f'In the Google spreadsheet, please:\n\n 1. Delete all sheets beginning with "{worksheets.SHEET_INDICATOR}" '+\
+                f'except "{worksheets.FULL_ROSTER_WORKSHEET}" \n\nAND\n\n 2. Fix the repeated names issue in "{worksheets.FULL_ROSTER_WORKSHEET}".')
         st.stop()
 
     st.session_state['df_roster_full'] = df_roster
@@ -54,7 +54,7 @@ else:
 st.session_state['load_roster'] = False
 
 with header_container:  # This will be at the top
-    st.header(f"Day {st.session_state['day']} Roster Setup")
+    st.header(f"Day {st.session_state['day']} ({gsheet['dates'][st.session_state['day']-1].day_name()}) Roster Setup")
     msg = f'The below Day {st.session_state['day']} roster is correct if the "{ROSTER_WORKSHEET}" tab of the Google spreadsheet is up-to-date. '+\
             '\n\nIf is not, update it and press the "Reload Spreadsheet" button below.'
     if st.session_state['day'] > 1:
@@ -66,6 +66,25 @@ day_col = [x for x in df_roster.columns if x.startswith(f'Day {st.session_state[
 
 df_roster = df_roster[df_roster[day_col]].reset_index(drop=True)
 st.session_state['df_roster'] = df_roster
+
+if len(df_roster)<=1:
+    st.warning(f"**WARNING**: Day {st.session_state['day']} ({gsheet['dates'][st.session_state['day']-1].day_name()}) only has {len(df_roster)} "+\
+             'participants. **If this is correct, please proceed.** If this is not correct, in the Google spreadsheet, please:\n\n '+\
+                f'1. Delete all sheets beginning with "{worksheets.SHEET_INDICATOR}"' +\
+               f'except "{worksheets.FULL_ROSTER_WORKSHEET}" \n\nAND\n\n 2. Update the "{columns.DATES_COL}" column in '+\
+               f'the "{worksheets.FULL_ROSTER_WORKSHEET}" to remove the erroneous date.')
+elif (st.session_state['day']==1 and gsheet['dates'][st.session_state['day']-1].day_name()=='Wednesday'):
+    st.warning(f"**WARNING**: Day {st.session_state['day']} ({gsheet['dates'][st.session_state['day']-1].day_name()}) is on a Wednesday. "+\
+                 '**If this is correct, please proceed.** If this is not correct, in the Google spreadsheet, please:\n\n '+\
+                    f'1. Delete all sheets beginning with "{worksheets.SHEET_INDICATOR}"' +\
+                   f'except "{worksheets.FULL_ROSTER_WORKSHEET}" \n\nAND\n\n 2. Update the "{columns.DATES_COL}" column in '+\
+                   f'the "{worksheets.FULL_ROSTER_WORKSHEET}" to remove the erroneous date.')
+elif df_roster[NAME_COL].str.contains('UNNAMED').any():
+    st.warning(f"**WARNING**: One or more volunteers have no name. They have been given default names starting with UNNAMED. "+\
+                     'To correct, in the Google spreadsheet, please:\n\n '+\
+                        f'1. Delete all sheets beginning with "{worksheets.SHEET_INDICATOR}"' +\
+                       f'except "{worksheets.FULL_ROSTER_WORKSHEET}" \n\nAND\n\n 2. Fix the empty names in '+\
+                       f'the "{worksheets.FULL_ROSTER_WORKSHEET}".')
 
 def reload():
     st.session_state['load_roster'] = True
