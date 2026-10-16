@@ -17,3 +17,5 @@ AGE_WEIGHT = 1
 EXP_WEIGHT = 1
 # How much to weight not having previously been in same car
 PREV_WEIGHT = 3
+# Weight for multiple volunteers with no experience in the same car on the 1st day
+NO_EXP_WEIGHT = 3
