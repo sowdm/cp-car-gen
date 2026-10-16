@@ -434,13 +434,15 @@ def get_paired_on_previous_days(df_roster, sht, day, num_vols):
     for d in range(day-1):
         df_past = get_sheet(sht['file'], CAR_GROUP_WORKSHEET.format(d+1))
 
+        pen = 2 if d==day-2 else 1
+
         # Populate prev_pair
         for c in df_past['Car'].unique():
             matches = df_roster['Name'].isin(df_past['Name'][df_past['Car']==c])
             for i in matches[matches].index:
                 for j in matches[matches].index:
                     if i!=j:
-                        prev_pair[i,j]+=1
+                        prev_pair[i,j]+=pen
 
     return prev_pair
 
