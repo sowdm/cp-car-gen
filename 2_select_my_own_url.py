@@ -32,17 +32,17 @@ st.subheader('How to Setup a Google Sheet to Generate Car Groups')
 
 st.markdown(
     'To generator car groups for your trip, you must:\n\n' \
-    '1. Create a [Google Spreadsheet](https://sheets.google.com/). Name it whatever you like.\n' \
+    '1. Create a [Google Spreadsheet](https://sheets.google.com/)\n\n\t- Name it whatever you like.\n' \
     f'2. Create or rename a tab (e.g. rename default tab from Sheet1) to be called "**{FULL_ROSTER_WORKSHEET}**" (including the !). '\
-        'See bar at bottom. Press + to add tab or double click on tab to rename.\n'
+        '\n\n\t- See bar at bottom. \n\n\t- Press + to add tab or double click on tab to rename.\n'
     '3. Go to your trip on the Common Power app.\n' \
     '4. Click "Export Trip Data to CSV"\n' \
     '5. Open the downloaded CSV.\n' \
-    f'6. Copy the table and paste into your tab named "**{FULL_ROSTER_WORKSHEET}** in your Google spreadsheet"\n'
+    f'6. Copy the table and paste into your tab named "**{FULL_ROSTER_WORKSHEET}**" in your Google spreadsheet\n'
     '7. In your Google spreadsheet, click the Share button in the upper right\n'
     "8. Enter this app's email **car-creator@common-power.iam.gserviceaccount.com** where it says 'Add People'. "
-        "(NOTE: do not email the app. No one will receive it.)\n"
-    "9. Ensure that the access level is **Editor** not Viewer or Commenter. This app needs to be able to add your car groups to your spreadsheet!\n"
+        "\n\n\t- (NOTE: No need to email the app. No one will receive it.)\n"
+    "9. Ensure that the access level is **Editor** not Viewer or Commenter.\n\n\t- This app needs to be able to add your car groups to your spreadsheet!\n"
     '10. Click Send.\n'
     '11. Click Share.\n'
     '12. Click Copy Link\n'

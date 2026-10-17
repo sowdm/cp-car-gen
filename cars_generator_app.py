@@ -11,6 +11,7 @@ import utils
 
 st.set_page_config(
     page_title="Car Generator",
+    page_icon='🚗',
     initial_sidebar_state="auto",
     layout = 'wide',
     menu_items={
