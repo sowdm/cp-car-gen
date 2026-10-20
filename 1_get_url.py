@@ -9,7 +9,7 @@ st.header('Car Group Generator')
 
 st.info('**This site will automatically create an initial draft of car groups for you.**\n\n' \
         'The first step is to select a Google Sheets URL that contains your roster.\n\n'
-        'NOTE: you should always review the results to ensure they meet your needs and for factors that this methodology cannot account for!')
+        'NOTE: You should always review the results to ensure they meet your needs and for factors that this methodology cannot account for!')
 
 col1, col2 = st.columns(2)
 
@@ -26,3 +26,5 @@ if col2.button('I want to use the example Google Sheet.'):
     else:
         st.session_state['load_roster'] = True
         st.switch_page('3_roster.py')
+
+st.warning('**FIRST TIME?** See tutorial video [here](https://youtu.be/GSaCGDebYDw).')
