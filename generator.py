@@ -6,7 +6,6 @@ import pandas as pd
 import random
 import re
 
-import constants
 from cp_gsheet import get_sheet
 from worksheets import CAR_GROUP_WORKSHEET
 import columns

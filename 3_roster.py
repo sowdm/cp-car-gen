@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import re
 import streamlit as st
@@ -136,6 +137,8 @@ if nav_cols[2].button('Accept Roster'):
     # Update spreadsheet
     st.session_state['ignore'] = []
     st.session_state['df_pairings'] = None
+
+    logging.info(f"Day {st.session_state['day']}: {len(st.session_state['df_roster'])} Volunteers")
     st.switch_page('4_pairings.py')
 
 st.subheader('Roster Modifications')

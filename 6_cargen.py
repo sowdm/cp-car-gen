@@ -1,4 +1,5 @@
 import gspread
+import logging
 import pandas as pd
 import random
 import re
@@ -152,4 +153,6 @@ if nav_cols[1].button(f'Export Day {day} Car Group to Google Spreadsheet', disab
                            color=gspread.utils.convert_colors_to_hex_value(green=1.0), 
                            index=0)
     st.session_state['is_balloon'] = random.randint(0,1)==1
+
+    logging.info('Carpools exported')
     st.switch_page('7_success.py')

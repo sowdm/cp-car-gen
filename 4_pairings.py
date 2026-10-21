@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import streamlit as st
 
@@ -55,4 +56,6 @@ if nav_cols[0].button('Accept Pairings', disabled=disabled):
     df[PAIR_COL] = df[PAIR_COL] == SAME_CAR
     df[SEPARATE_COL] = df[SEPARATE_COL].str.lower() == 'yes'
     st.session_state['cargen'] = CarGenerator(df_roster, df, st.session_state['day'], gsheet, st.session_state['ignore'], st.session_state['config'])
+
+    logging.info(f'{len(df)} pairings selected')
     st.switch_page('5_drivers.py')

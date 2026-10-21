@@ -1,3 +1,4 @@
+import logging
 import streamlit as st
 
 import base_page
@@ -16,6 +17,7 @@ if nav_cols[0].button('Create Car Groups for This URL'):
     if len(url)==0:
         st.toast('ERROR: URL must be entered into Google Sheet URL textbox.', duration='long')
     else:
+        logging.info(f'{url=}')
         with st.spinner():
             st.session_state['gsheet'], errmsg = cp_gsheet.load_url(st.session_state['client'], url)
         st.session_state['is_sample'] = False

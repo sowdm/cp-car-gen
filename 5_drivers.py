@@ -1,9 +1,11 @@
+import logging
 import re
 import streamlit as st
 from streamlit_sortables import sort_items
 
 import base_page
 import cp_gsheet
+import constants
 from generator import get_drivers
 import worksheets
 from worksheets import DRIVER_WORKSHEET
@@ -137,6 +139,8 @@ if nav_cols[1].button('Accept Drivers', disabled=disabled):
     selected_drivers.extend(st.session_state['separate_car_drivers'])
     st.session_state['cargen'].set_drivers(selected_drivers)
     st.session_state['df_car_groups'] = None
+
+    logging.info('Drivers selected')
     st.switch_page('6_cargen.py')
 
 st.subheader('Driver Pool Updates')

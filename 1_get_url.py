@@ -1,3 +1,4 @@
+import logging
 import streamlit as st
 
 import base_page
@@ -14,9 +15,11 @@ st.info('**This site will automatically create an initial draft of car groups fo
 col1, col2 = st.columns(2)
 
 if col1.button('I have a roster. I want to use my own Google Sheet.'):
+    logging.info('Selected own Google Sheet')
     st.switch_page('2_select_my_own_url.py')
 
 if col2.button('I want to use the example Google Sheet.'):
+    logging.info('Selected example')
     with st.spinner():
         st.session_state['gsheet'], errmsg = cp_gsheet.load_url(st.session_state['client'], st.secrets['SAMPLE_URL'])
     assert not errmsg, 'ERROR: Sample spreadsheet does not have roster. This should not happen. Please report this issue.'
