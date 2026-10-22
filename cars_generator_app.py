@@ -7,7 +7,7 @@ import constants
 import logging
 import utils
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(format='%(asctime)s:%(levelname)s:%(name)s:%(message)s', level=logging.INFO)
 
 # TODO: Create timeline of when people are present including half-day status
 # TODO: Add ability to change config and import/export config
