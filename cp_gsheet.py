@@ -26,7 +26,7 @@ def get_sheet(sht, name, clean=False, str_cols=[], name_cols=[], numeric_cols=[]
     return df
 
 
-def get_spreadsheet(client: gspread.client.Client, url: str):
+def get_spreadsheet(client: gspread.client.Client, url: str, start_day=0):
     sht = client.open_by_url(url)
     worksheet_list = [x.title for x in sht.worksheets() if x.title.startswith(SHEET_INDICATOR)]
     has_cp_export = FULL_ROSTER_WORKSHEET in worksheet_list
@@ -39,13 +39,15 @@ def get_spreadsheet(client: gspread.client.Client, url: str):
     is_complete = False
     if has_cp_export:
         df = get_sheet(sht, FULL_ROSTER_WORKSHEET)
-        has_cp_export = 'Canvassing Dates' in df
+        has_cp_export = DATES_COL in df
         if has_cp_export:
             dts = set()
-            for x in [re.findall(r'\d{1,2}/\d{1,2}/\d{4}', x) for x in df['Canvassing Dates'].tolist()]:
+            for x in [re.findall(r'\d{1,2}/\d{1,2}/\d{4}', x) for x in df[DATES_COL].tolist()]:
                 dts.update(x)
             dts = list({pd.to_datetime(x) for x in dts})  # In case, multiple formats...
             dts.sort()
+            if len(dts)>0:
+                dts = dts[start_day:]
 
             date_has_car_group = [CAR_GROUP_WORKSHEET.format(k+1) in worksheet_list for k in range(len(dts))]
             if any(date_has_car_group):
@@ -89,7 +91,7 @@ def update_sheet(sht, name, df, worksheet_list, color=None, index=None, row=1, c
         worksheet.update_tab_color(color)
 
 
-def init(gsheet):
+def init(gsheet, start_day=0):
     sht = gsheet['file']
     worksheet_list = gsheet['worksheets']
 
@@ -111,6 +113,8 @@ def init(gsheet):
         date_set.update(d)
     all_dates = list(set(pd.to_datetime(x) for x in date_set))
     all_dates.sort()
+    if len(all_dates)>0:
+        all_dates = all_dates[start_day:]
 
     day_cols = []
     for k,d in enumerate(all_dates):
@@ -227,10 +231,10 @@ def set_day(mode, worksheet_list, ndays):
     assert day<=ndays, 'Car group requested for a day beyond the number of days in the trip'
     return day
 
-def load_url(client, url, reinit=False):
+def load_url(client, url, reinit=False, start_day=0):
     url = url.strip()
     try:
-        gsheet = get_spreadsheet(client, url)
+        gsheet = get_spreadsheet(client, url, start_day=start_day)
     except PermissionError:
         errmsg = 'The entered URL has not been shared with this app. Please follow the instructions below for sharing your Google spreadsheet.'
         return None, errmsg
@@ -241,9 +245,9 @@ def load_url(client, url, reinit=False):
                 ' from the app. Please follow the instructions below for setting up your Google spreadsheet.'
     elif not gsheet['is_init'] or reinit:
         try:
-            errmsg = init(gsheet)
+            errmsg = init(gsheet, start_day=start_day)
             if not errmsg:
-                gsheet = get_spreadsheet(client, url)
+                gsheet = get_spreadsheet(client, url, start_day=start_day)
         except gspread.exceptions.APIError as e:
             if len(e.args)>0 and 'message' in e.args[0] and 'A tab with the name' in e.args[0]['message'] and \
                  'already exists' in e.args[0]['message']:

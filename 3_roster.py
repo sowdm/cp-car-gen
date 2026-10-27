@@ -68,24 +68,25 @@ day_col = [x for x in df_roster.columns if x.startswith(f'Day {st.session_state[
 df_roster = df_roster[df_roster[day_col]].reset_index(drop=True)
 st.session_state['df_roster'] = df_roster
 
-if len(df_roster)<=1:
-    st.warning(f"**WARNING**: Day {st.session_state['day']} ({gsheet['dates'][st.session_state['day']-1].day_name()}) only has {len(df_roster)} "+\
-             'participants. **If this is correct, please proceed.** If this is not correct, in the Google spreadsheet, please:\n\n '+\
-                f'1. Delete all sheets beginning with "{worksheets.SHEET_INDICATOR}"' +\
-               f'except "{worksheets.FULL_ROSTER_WORKSHEET}" \n\nAND\n\n 2. Update the "{columns.DATES_COL}" column in '+\
-               f'the "{worksheets.FULL_ROSTER_WORKSHEET}" to remove the erroneous date.')
-elif (st.session_state['day']==1 and gsheet['dates'][st.session_state['day']-1].day_name()=='Wednesday'):
-    st.warning(f"**WARNING**: Day {st.session_state['day']} ({gsheet['dates'][st.session_state['day']-1].day_name()}) is on a Wednesday. "+\
-                 '**If this is correct, please proceed.** If this is not correct, in the Google spreadsheet, please:\n\n '+\
-                    f'1. Delete all sheets beginning with "{worksheets.SHEET_INDICATOR}"' +\
-                   f'except "{worksheets.FULL_ROSTER_WORKSHEET}" \n\nAND\n\n 2. Update the "{columns.DATES_COL}" column in '+\
-                   f'the "{worksheets.FULL_ROSTER_WORKSHEET}" to remove the erroneous date.')
+if st.session_state['day']==1 and (len(df_roster)<=1 or gsheet['dates'][st.session_state['day']-1].day_name()=='Wednesday'):
+    if len(df_roster)<=1:
+        st.warning(f"**WARNING**: Day {st.session_state['day']} ({gsheet['dates'][st.session_state['day']-1].day_name()}) only has {len(df_roster)} "+\
+                'participants. **If this is correct, please proceed.** If this is not correct, either ')
+    else:
+        st.warning(f"**WARNING**: Day {st.session_state['day']} is on a {gsheet['dates'][st.session_state['day']-1].day_name()}. "+\
+                    '**If this is correct, please proceed.** If not, either click the Reset button below or (carefully) manually update the Google spreadsheet')
+
+    if st.button('Reset Spreadsheet and Remove Current Day 1', help='Reset Spreadsheet and Remove Current Day 1. This will modify your Google Spreadsheet!'):
+        st.session_state['gsheet'], errmsg = cp_gsheet.load_url(st.session_state['client'], gsheet['url'], reinit=True, start_day=1)
+        st.session_state['load_roster'] = True
+        st.rerun()
+
 elif df_roster[NAME_COL].str.contains('UNNAMED').any():
     st.warning(f"**WARNING**: One or more volunteers have no name. They have been given default names starting with UNNAMED. "+\
-                     'To correct, in the Google spreadsheet, please:\n\n '+\
+                    'If you want to correct this, please do the following in the Google spreadsheet:\n\n '+\
                         f'1. Delete all sheets beginning with "{worksheets.SHEET_INDICATOR}"' +\
-                       f'except "{worksheets.FULL_ROSTER_WORKSHEET}" \n\nAND\n\n 2. Fix the empty names in '+\
-                       f'the "{worksheets.FULL_ROSTER_WORKSHEET}".')
+                    f'except "{worksheets.FULL_ROSTER_WORKSHEET}" \n\nAND\n\n 2. Fix the empty names in '+\
+                    f'the "{worksheets.FULL_ROSTER_WORKSHEET}".')
 
 def reload():
     st.session_state['load_roster'] = True
