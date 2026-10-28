@@ -106,14 +106,23 @@ def init(gsheet, start_day=0):
     df_roster = df_roster.rename(columns=RENAME_COLS)
     df_roster[NAME_COL] = df_roster.apply(lambda x: f"{x[NAME_COL]} {x['Last Name']}", axis=1)
 
-    dates = df_roster[DATES_COL].tolist()
-    dates = [x.strip().split() for x in dates]
+    orig_dates = df_roster[DATES_COL].tolist()
+    dates = [[y for y in x.strip().split() if len(y)>0] for x in orig_dates]
     date_set = set()
     for d in dates:
         date_set.update(d)
     all_dates = list(set(pd.to_datetime(x) for x in date_set))
     all_dates.sort()
-    if len(all_dates)>0:
+    if len(all_dates)>0 and start_day>0:
+        dates_remove = all_dates[:start_day]
+        new_dates = orig_dates.copy()
+        for k in range(len(dates)):
+            for y in dates[k]:
+                if pd.to_datetime(y) in dates_remove:
+                    new_dates[k] = re.sub(r'\n+', '\n', orig_dates[k].replace(y, '').strip())
+
+        df_full_roster[DATES_COL] = new_dates
+        update_sheet(sht, FULL_ROSTER_WORKSHEET, df_full_roster, worksheet_list)
         all_dates = all_dates[start_day:]
 
     day_cols = []
