@@ -2,9 +2,13 @@ import logging
 import streamlit as st
 
 import base_page
+import constants
 import cp_gsheet
 
 base_page.setup(__file__, True)
+
+st.warning('**Please share your feedback (GOOD or BAD)' +\
+        f' to help us improve this tool!** Send feedback to: [{constants.EMAIL}](mailto:{constants.EMAIL}).')
 
 st.header('Car Group Generator')
 

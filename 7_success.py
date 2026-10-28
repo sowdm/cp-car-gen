@@ -1,8 +1,13 @@
 import streamlit as st
 
 import base_page
+import constants
 
 base_page.setup(__file__)
+
+st.warning('**Please share your feedback (GOOD or BAD)' +\
+        f' to help us improve this tool!** Send feedback to: [{constants.EMAIL}](mailto:{constants.EMAIL}).')
+
 st.header('Please review the results! Car group has successfully been exported to Google Sheet.')
 
 st.text('Click "Start Over" to add car groups for the next day.')
